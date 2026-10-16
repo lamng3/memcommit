@@ -2,96 +2,154 @@
 
 Why Mneme is built the way it is. `PLAN.md` says what is built and what is next.
 
-## Why a separate layer
+## What it is for
 
-MOIRA keeps a three-tier query cache, and it answers from that cache before it
-retrieves. Two things go wrong when the ontology under it changes:
+Agents write a lot down: thoughts, tool calls, observations, messages,
+results, plans, decisions. In a multi-agent workflow one agent's output is
+another's premise. Mneme is the place all of that lives: a store of JSON
+memories with a log, provenance, tiers, and the policies that keep working
+memory small. It is a library with no dependencies, meant to be plugged into
+any agent system; it knows nothing about any particular agent, model, or
+domain.
 
-- **Poisoned answers outlive a rollback.** Answers cached while the ontology was poisoned are still served after Aegis rolls the ontology back.
-- **The cache is keyed by file, not by version.** An ontology that lives in a database has no file to hash.
+## How agent systems store memory, and what we took
 
-OntoDB is mechanism (triples, transactions, recovery) and should stay a
-general database. Aegis is defense, and its paper is security. What to
-remember, when to promote, and what to evict is policy driven by how agents
-behave, so it gets its own layer (Aegis `docs/decisions.md`, Oct 15, 2026).
+| System | How it stores memory | What Mneme takes |
+|:--|:--|:--|
+| MemGPT / Letta (Packer et al., 2023) | Main context, recall storage, archival storage; the agent pages between them | Tiers: `short` is the context, `long` and `archive` the stores behind it |
+| Generative Agents (Park et al., 2023) | A memory stream of observations; retrieval by recency, importance, and relevance; reflections summarize | The recall score; `Scored` eviction; summaries as reflections |
+| Reflexion (Shinn et al., 2023) | Episodic self-reflections after each trial | Compaction: a finished trace becomes one long-term memory |
+| MemoryOS (Kang et al., 2025) | Short-, mid-, and long-term stores; heat-based promotion | Promotion policies on use counts and importance |
+| A-MEM (Xu et al., 2025) | Notes linked to each other, links updated as notes arrive | Provenance links, and invalidation along them |
+| Mem0 (Chhikara et al., 2025) | Extracted facts with add, update, delete, no-op | Status ops on an append-only log instead of updates in place |
+| Zep (Rasmussen et al., 2025) | A temporal knowledge graph; facts have validity intervals | `as_of(lsn)`: any past state, and why a fact stopped holding |
+
+What none of them give together, and Mneme does: transactions, an
+append-only log with compensation, provenance that invalidates downstream
+work, and every tier decision recorded. Those are what make memory shared by
+several agents safe to rely on and possible to defend.
 
 ## Memories are values
 
 A `Memory` is immutable, and its id is a hash of its kind, key, body, source,
-scope, and `derived_from`. Two consequences:
+scope, importance, and `derived_from`. Two consequences:
 
-- Writing a live memory again writes nothing, and redoing work that comes out identical *restores* the old memory instead of creating a new one. After a rollback, the demo's answer has the same id it had before the attack.
-- A memory read back from storage is checked against its id, so an altered body is caught on load.
+- Writing a live memory again writes nothing, and redoing work that comes out identical restores the old memory instead of creating a new one.
+- A body cannot be changed without its id changing, so tampering shows up on load and in `verify`.
 
-## Status is a fold over the log
+## Status and tier are a fold over the log
 
-Each `Record` puts, restores, retracts, or marks stale one memory. `State` is
-the result of applying records in LSN order, with two indexes: by
-(kind, key), and from each reference to the memories derived from it. Replay
+Each `Record` puts, restores, retracts, or marks stale one memory, or moves it
+to another tier. `State` is the result of applying records in LSN order, with
+three indexes: by (kind, key), from each reference to the memories derived
+from it, and from each kind to the reads (`find:` refs) over it. Replay
 rebuilds exactly the state that wrote the log, and `as_of(lsn)` is a replay
 that stops early.
 
-`stale` and `retracted` are different on purpose. Stale means something it was
-built on no longer holds, and redone work may bring it back. Retracted means it
-was wrong.
+Status (`live`, `stale`, `retracted`) says whether a memory holds. Tier
+(`short`, `long`, `archive`) says where it sits. They are independent: a
+stale long-term memory is still long-term, and a redo that restores it puts it
+back where it was. Tiers decide what is in working memory and what recall
+searches; they never hide a memory from `find`.
 
-Rollback is compensation, as in ARIES: the store computes the status of every
-memory as of the target LSN and writes the records that move each one back.
-Nothing is erased.
+Rollback is compensation, as in ARIES: the store computes the status and tier
+of every memory as of the target LSN and writes the records that move each
+one back. Nothing is erased.
 
 ## Provenance drives invalidation
 
-`derived_from` holds memory ids and outside references (`ontology:materials@3`,
+`derived_from` holds memory ids and outside references (`doc:handbook@3`,
 `file:sha256...`). `invalidate(refs)` marks stale every live memory reachable
-through the reference index, in one transaction. This is the same idea as
-Aegis's action log: each memory records the ontology version it was derived
-from, and a rollback past that version invalidates it.
+through the reference index, in one transaction. A client that versions
+something outside the store (a document, a knowledge base, a model) records
+the version as a reference, and invalidating the version invalidates what was
+built on it.
 
 ## Reads are provenance too
 
 An answer derives from the memories it read, but it also depends on the ones
-it looked for and did not find. "Ceramic has no alignment" is built on an
-empty read, and the first match for `Ceramic` must undo it.
+it looked for and did not find. "No notes about this topic" is built on an
+empty read, and the first note must undo it.
 
-So a reference can name a read: `query_ref("match", source="Ceramic")`, a
-`find:` prefix and the query (kind, optional key, body fields). An agent
-derives from it next to the memories the read returned. `State` indexes query
-references by kind; when a commit brings a memory live, the store finds the
-reads that memory now belongs to and marks everything built on them stale,
-in the same transaction. Memories written by that commit are left alone.
+So a reference can name a read: `query_ref("note", topic="light")`, a `find:`
+prefix and the query (kind, optional key, body fields). An agent derives from
+it next to the memories the read returned. When a commit brings a memory live,
+the store finds the reads that memory now belongs to and marks everything
+built on them stale, in the same transaction. Memories written by that commit
+are left alone.
 
 Only additions need this. A memory that drops out of a read was returned by
 it, so whatever used it already derives from it directly. Over-invalidation is
 cheap: work redone with the same result restores the same memory id.
 
+## Traces
+
+A run is a root memory (`trace`: agent, task, run id, inputs) and one memory
+per step. A step is derived from the root and its parent step, which is the
+previous step unless one is given, so a trace is a tree and the tree is
+provenance: invalidating a trace's inputs, or one observation, makes every
+later step stale. Steps commit one at a time, because a trace is a record of
+what happened, and a crash should keep what happened before it. A handoff
+writes a `message` step and starts the other agent's trace derived from it.
+
+## Tiers and policies
+
+Short-term memory is bounded per partition (a scope, by default), so each
+agent's working memory and shared memory have their own room. When a commit
+leaves a partition over capacity, `TieredMemory` runs `maintain()` through
+`store.defer`, after the commit is done:
+
+1. Compact finished traces into long-term summaries.
+2. Promote what the promotion policy selects to long-term.
+3. Evict from each short-term partition over capacity, memories that no longer hold first, then the eviction policy's victims, to the archive.
+4. Trim long-term to its capacity, if it has one.
+
+Policies see `Candidate`s, not the store: the memory, tier, status, and use
+counts on a logical clock. That keeps them small and swappable, and it is the
+seam for the policies we have not written yet (see `PLAN.md`).
+
+Use is counted by an `AccessLog`, outside the log, because reads are many
+and cheap. It can be saved and loaded; without it a restarted store counts
+each memory as used once, at its write.
+
+## Compaction
+
+A finished trace has many steps an agent rarely needs again. `Compactor`
+writes a `summary` in the long-term tier, derived from the root and every
+step, and moves the steps to the archive, in one transaction. Because the
+summary is derived from the steps, a step later found wrong takes the summary
+with it. What a summary says is the summarizer's choice; `outline` needs no
+model, and a language-model reflection has the same signature.
+
+## Recall
+
+Relevance comes from an index kept in step with the store by `CacheSync`, so
+a stale memory is never recalled: `LexicalIndex` (BM25) needs nothing,
+`VectorIndex` takes any embedding function. The score adds recency (decay per
+log record since the memory last changed) and importance. Hits are touched in
+the tiers, which is how recall feeds the policies.
+
 ## Guards before, observers after
 
 A commit numbers its records, asks every guard, appends to the engine in one
-call, applies to the state, then tells every observer. Neither a guard nor an
-observer may commit during a commit; an observer that wants to write queues
-the work. That keeps every commit's effects in one place.
+call, applies to the state, then tells every observer. Neither may commit
+during a commit; an observer calls `store.defer(work)` instead, and the store
+runs the work once the commit is done.
 
-- `scope_guard`: an agent writes only to `shared` or its own scopes.
-- `version_guard`: rejects a memory derived from an ontology version that is no longer current, so a slow agent cannot commit work done against an ontology that has since changed.
+## Built to be defended
 
-## The blackboard
-
-Agents coordinate only through the store. An agent's results and a `receipt`
-are written in one transaction; the receipt is derived from the input and
-every result. So:
-
-- **Exactly once.** A restarted blackboard queues only inputs without a live receipt.
-- **Redo on invalidation.** When a result goes stale, its receipt goes stale with it, and the input is queued again while it still holds.
-- **Failure is isolated.** A failing agent's transaction is dropped and an `error` memory is written in its scope.
-
-## Caches are views
-
-The store is the truth; a cache is a copy shaped for fast lookups. `CacheSync`
-admits on `live` and evicts on anything else. MOIRA's tiers have no delete,
-so `MoiraAnswerCache` rebuilds them from the answers still live, which keeps
-promotion counts honest.
+Shared memory is an attack surface: inject a false observation, retract a
+true one, rewire what a memory was derived from, poison a summary. Mneme does
+not decide what is malicious, but it makes a defender's work exact:
+content addressing catches altered bodies, `verify` replays the log for what a
+well-behaved store could not have written, `blast_radius` finds everything a
+suspect reached, `quarantine` retracts and invalidates in one transaction,
+and `provenance_guard` rejects forged or stale premises at write time. A
+defender that also detects (re-checking answers, watching scores) plugs in as
+an observer or a guard.
 
 ## Open questions
 
 - **Ordering on the blackboard.** The queue is FIFO, so work can run before work that would change its result and then run again. Reads make that correct; a dependency-aware order would make it cheaper.
-- **Poisoning the memory itself.** Injecting a fake memory, removing a real one, or rewiring what a memory names is a counterfactual attack with Aegis's four primitives. That is Aegis's second paper.
+- **Access counts and the log.** Reads are not logged, so a policy's inputs cannot be replayed exactly after a restart without the saved `AccessLog`. Logging sampled reads is one option.
+- **Read references and scopes.** A `find:` reference does not record the reader's scopes, so a memory the reader could not see can still invalidate its work. That over-invalidates, which is safe.
