@@ -28,7 +28,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Protocol
 
-from .records import LIVE, Commit, Memory
+from .records import ARCHIVE, LIVE, Commit, Memory
 from .session import AgentSession
 from .state import State
 from .store import MemoryStore, Transaction
@@ -89,6 +89,8 @@ class Blackboard:
     def _observe(self, commit: Commit, state: State) -> None:
         for record in commit.records:
             m = record.memory
+            if record.op == "move":
+                continue
             if record.status == LIVE:
                 for agent in self._consumers(m.kind):
                     self._enqueue(agent, m.id)
@@ -117,13 +119,14 @@ class Blackboard:
         try:
             with session.transaction() as tx:
                 agent.handle(memory, tx, session)
-                outputs = [m.id for op, m, _ in tx.ops if op == "put"]
+                outputs = [m.id for op, m, _, _ in tx.ops if op == "put"]
                 tx.put(
                     RECEIPT,
                     receipt_key(agent.name, memory.id),
                     {"agent": agent.name, "input": memory.id},
                     scope=agent.name,
                     derived_from=[memory.id, *outputs],
+                    tier=ARCHIVE,  # bookkeeping: never takes room in working memory
                 )
         except Exception as err:  # an agent's failure must not stop the others
             session.put(ERROR, receipt_key(agent.name, memory.id), {"error": repr(err)}, scope=agent.name)
