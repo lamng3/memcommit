@@ -104,16 +104,16 @@ policy. A sanity check, not a benchmark on recorded agent traces.
 
 | Policy | Hit rate, cap 16 | cap 32 | cap 64 | Peak working memory | Log records | Replay ms |
 |:--|:--:|:--:|:--:|:--:|--:|--:|
-| FIFO | 0.506 | 0.551 | 0.602 | 32 |
-| LRU | 0.642 | 0.744 | 0.828 | 32 |
-| LFU | 0.354 | 0.460 | 0.606 | 32 |
-| Scored (recency, importance, frequency) | 0.377 | 0.542 | 0.826 | 32 |
-| Forgetting curve | **0.648** | **0.771** | **0.867** | 32 |
-| 2Q | 0.381 | 0.481 | 0.606 | 32 |
-| ARC | 0.551 | 0.663 | 0.763 | 32 |
-| Learned (online logistic) | 0.627 | 0.742 | 0.803 | 32 |
-| LRU + promote used (≥ 3 uses) | 0.869 | 0.894 | 0.924 | 121 |
-| Scored + promote important | 0.631 | 0.867 | 0.922 | 103 |
+| FIFO | 0.506 | 0.551 | 0.602 | 32 | 1,112 | 42 |
+| LRU | 0.642 | 0.744 | 0.828 | 32 | 930 | 38 |
+| LFU | 0.354 | 0.460 | 0.606 | 32 | 1,198 | 46 |
+| Scored (recency, importance, frequency) | 0.377 | 0.542 | 0.826 | 32 | 1,120 | 48 |
+| Forgetting curve | **0.648** | **0.771** | **0.867** | 32 | **904** | 41 |
+| 2Q | 0.381 | 0.481 | 0.606 | 32 | 1,178 | 47 |
+| ARC | 0.551 | 0.663 | 0.763 | 32 | 1,006 | 41 |
+| Learned (online logistic) | 0.627 | 0.742 | 0.803 | 32 | 932 | 51 |
+| LRU + promote used (≥ 3 uses) | 0.869 | 0.894 | 0.924 | 121 | 790 | 51 |
+| Scored + promote important | 0.631 | 0.867 | 0.922 | 103 | 814 | 62 |
 
 <sub>Peak working memory, log records, and replay time at cap 32 · `python examples/policy_benchmark.py --json …` · `results/policies/2026-10-16.json`</sub>
 
