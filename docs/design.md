@@ -47,6 +47,23 @@ through the reference index, in one transaction. This is the same idea as
 Aegis's action log: each memory records the ontology version it was derived
 from, and a rollback past that version invalidates it.
 
+## Reads are provenance too
+
+An answer derives from the memories it read, but it also depends on the ones
+it looked for and did not find. "Ceramic has no alignment" is built on an
+empty read, and the first match for `Ceramic` must undo it.
+
+So a reference can name a read: `query_ref("match", source="Ceramic")`, a
+`find:` prefix and the query (kind, optional key, body fields). An agent
+derives from it next to the memories the read returned. `State` indexes query
+references by kind; when a commit brings a memory live, the store finds the
+reads that memory now belongs to and marks everything built on them stale,
+in the same transaction. Memories written by that commit are left alone.
+
+Only additions need this. A memory that drops out of a read was returned by
+it, so whatever used it already derives from it directly. Over-invalidation is
+cheap: work redone with the same result restores the same memory id.
+
 ## Guards before, observers after
 
 A commit numbers its records, asks every guard, appends to the engine in one
@@ -76,6 +93,5 @@ promotion counts honest.
 
 ## Open questions
 
-- **Reads of absence.** An answer derives from the memories it read, not from the ones it looked for and did not find. In the demo, if KROMA aligns `Ceramic` after the answerer has already redone its answer, the cached answer keeps saying `Ceramic` has no alignment. Candidates: derive from a query ref (`find:match/source=Ceramic`) that a matching put invalidates, or version the set of matches as a memory of its own.
-- **Ordering on the blackboard.** The queue is FIFO. Work queued by an invalidation can run before work that would change its result, which is how the case above shows up. A dependency-aware order would hide it but not fix it.
+- **Ordering on the blackboard.** The queue is FIFO, so work can run before work that would change its result and then run again. Reads make that correct; a dependency-aware order would make it cheaper.
 - **Poisoning the memory itself.** Injecting a fake memory, removing a real one, or rewiring what a memory names is a counterfactual attack with Aegis's four primitives. That is Aegis's second paper.

@@ -61,6 +61,7 @@ memory as a database problem.
 
 - **Content-addressed memories.** A memory is an immutable value; its id is a hash of its kind, key, body, source, scope, and provenance. Writing the same memory twice names the same memory.
 - **Provenance.** Every memory records what it was `derived_from`: other memories, or outside references such as an ontology version. Invalidating a reference marks everything built on it stale, transitively, in one transaction.
+- **Reads are provenance too.** A memory can derive from a read (`query_ref("match", source="Ceramic")`). When a new memory changes what that read returns, everything built on it goes stale, so "Ceramic has no alignment" is undone by the first match.
 - **A log, not a table.** Status (`live`, `stale`, `retracted`) is never stored on a memory. It is a fold over an append-only log, so any past state can be rebuilt, and rollback is compensation that keeps history.
 - **Transactions with guards and observers.** Guards reject a commit before it is written (scopes, stale provenance, a defense layer's checks); observers react after it is durable (caches, schedulers).
 - **A blackboard.** Agents never call each other. Each consumes kinds of memory and writes results with a receipt in the same transaction, so work is done exactly once, survives a restart, and is redone when its inputs go stale.

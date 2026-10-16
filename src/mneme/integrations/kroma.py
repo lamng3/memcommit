@@ -7,6 +7,10 @@ accepted pair runs `kroma.algorithms.refinement.online_refine`, the online
 refinement step of the ISWC 2025 paper, on the merged concept graph. Pairs
 that refinement cannot settle become `review` memories for an expert.
 
+An agent that looks up a concept's matches derives its result from
+`alignment_read(concept)` as well as from the matches it found, so a match
+that arrives later, including the first one, sends that work back to be redone.
+
 The judge is where KROMA's language-model debate plugs in
 (`kroma.agents.prompter.inference`); any callable with the same outputs works,
 which is how the tests and the demo run without a model.
@@ -21,7 +25,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from typing import Any
 
-from ..records import Memory
+from ..records import Memory, query_ref
 from ..session import AgentSession
 from ..store import Transaction
 
@@ -100,6 +104,11 @@ class KromaMatcher:
                 tx.put(REVIEW, match_key(u, v), {"source": u, "target": v}, derived_from=refs)
             body["same_class"] = self.block(source) == self.block(target)
         tx.put(MATCH, match_key(source, target), body, derived_from=refs)
+
+
+def alignment_read(source: str) -> str:
+    """What to derive from after looking up `source`'s matches: any later match for it makes the result stale."""
+    return query_ref(MATCH, source=source)
 
 
 def accepted_matches(session: AgentSession, source: str | None = None) -> list[Memory]:

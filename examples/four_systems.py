@@ -45,7 +45,7 @@ from moira.memory import normalize_question  # noqa: E402
 
 from mneme import Blackboard, CacheSync, JsonlEngine, MemoryStore, Rejected, scope_guard  # noqa: E402
 from mneme.integrations.aegis import OntologyVersions, version_guard  # noqa: E402
-from mneme.integrations.kroma import KromaMatcher, accepted_matches  # noqa: E402
+from mneme.integrations.kroma import KromaMatcher, accepted_matches, alignment_read  # noqa: E402
 from mneme.integrations.moira import MoiraAnswerCache, MoiraFrontDesk  # noqa: E402
 
 SUB = "subClassOf"
@@ -97,7 +97,7 @@ class MoiraAnswerer:
         parts, used = [], []
         for concept in kinds:
             matches = accepted_matches(session, concept)
-            used += [m.id for m in matches]
+            used += [alignment_read(concept), *(m.id for m in matches)]
             aligned = ", ".join(m.body["target"] for m in matches)
             parts.append(f"{concept} (MatOnto: {aligned})" if aligned else concept)
         body = {
@@ -184,15 +184,12 @@ def main() -> None:
     ask(REWORDED)
 
     say("3. An honest edit through Aegis: add Ceramic under Material, and align it")
-    # Queue the alignment before the edit, so the agents redo the answer with it. A match that
-    # arrives after the answer is redone does not refresh it: an answer derives from the matches
-    # it found, not from the absence of one (docs/design.md, open questions).
-    request(("Ceramic", "Ceramics"))
     v.apply_chain([inject_concept("Ceramic"), inject_relation("Ceramic", SUB, "Material")])
     honest_lsn = v.lsn
-    board.run()
-    report(("Ceramic", "Ceramics"))
     print(f"   version now {versions.current().key}; the old answer went stale with the old version")
+    request(("Ceramic", "Ceramics"))
+    board.run()  # the answer is redone for the new version, then again once Ceramic has a match
+    report(("Ceramic", "Ceramics"))
     honest = ask(QUESTION)
     honest_id = store.latest("answer", QUESTION).id
 

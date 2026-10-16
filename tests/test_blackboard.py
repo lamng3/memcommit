@@ -1,6 +1,6 @@
 """The blackboard: agents coordinate through memories, exactly once, and redo work that went stale."""
 
-from mneme import ERROR, RECEIPT, Blackboard, CacheSync, DictCache, JsonlEngine, MemoryStore, scope_guard
+from mneme import ERROR, RECEIPT, Blackboard, CacheSync, DictCache, JsonlEngine, MemoryStore, query_ref, scope_guard
 
 
 class Doubler:
@@ -75,6 +75,36 @@ def test_invalidating_an_upstream_fact_redoes_the_work_downstream():
     board.run()
     assert store.latest("report", "a").body == "a -> 2"
     assert doubler.calls == 2
+
+
+class Labeler:
+    """Labels a concept with its alignment, or says it has none: a read whose empty result matters."""
+
+    name = "labeler"
+    consumes = frozenset({"concept"})
+
+    def handle(self, memory, tx, session):
+        matches = session.find(kind="match", where={"source": memory.key})
+        label = ", ".join(m.body["target"] for m in matches) or "unaligned"
+        refs = [memory.id, query_ref("match", source=memory.key), *(m.id for m in matches)]
+        tx.put("label", memory.key, label, derived_from=refs)
+
+
+def test_a_new_memory_redoes_work_that_read_its_absence():
+    store = MemoryStore()
+    board = Blackboard(store, [Labeler()])
+    store.put("user", "concept", "Ceramic")
+    board.run()
+    unaligned = store.latest("label", "Ceramic")
+    assert unaligned.body == "unaligned"
+
+    store.put("kroma", "match", "Ceramic|Ceramics", {"source": "Ceramic", "target": "Ceramics"})
+    assert store.latest("label", "Ceramic") is None  # the old label is not served
+    board.run()
+    assert store.latest("label", "Ceramic").body == "Ceramics"
+
+    store.put("kroma", "match", "Metal|MetallicMaterial", {"source": "Metal", "target": "MetallicMaterial"})
+    assert board.pending() == 0  # a match for another concept changes nothing
 
 
 def test_a_failing_agent_writes_nothing_but_an_error():
