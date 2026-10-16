@@ -325,6 +325,16 @@ Another backend subclasses `Engine` (two methods: `append` and `records`;
 `records_after` and `rewrite` have defaults it may speed up) and registers in
 `ENGINES`.
 
+**Provenance as a graph.** An engine can keep the log in an RDF store, writing
+each record and each memory as triples, with `derivedFrom` edges. Provenance
+questions then become SPARQL. Which memories were built on this one?
+
+```sparql
+SELECT ?m WHERE { ?m <urn:mneme:derivedFrom> <urn:mneme:m:4e33527c048490ae> . }
+```
+
+OntoDB is one such store; its engine lives with the workflow that uses it.
+
 </details>
 
 ## 🧭 Roadmap
