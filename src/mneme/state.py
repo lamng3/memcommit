@@ -6,15 +6,18 @@ stops early. Two indexes are kept as records are applied:
 
 - by (kind, key), for the reads agents make most;
 - by reference, from each reference to the memories derived from it, so the
-  memories an invalidation reaches are found without a scan.
+  memories an invalidation reaches are found without a scan;
+- by kind, the query references (`find:...`) memories were derived from, so a
+  commit finds the reads a new memory changes without a scan.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
+from typing import Any
 
-from .records import LIVE, Memory, Record
+from .records import LIVE, Memory, Record, body_has, matches, parse_query
 
 
 @dataclass
@@ -26,6 +29,7 @@ class State:
     last: dict[str, Record] = field(default_factory=dict)
     _by_key: dict[tuple[str, str], list[str]] = field(default_factory=dict)
     _children: dict[str, set[str]] = field(default_factory=dict)
+    _queries: dict[str, dict[str, dict[str, Any]]] = field(default_factory=dict)
 
     @classmethod
     def replay(cls, records: Iterable[Record], until: int | None = None) -> State:
@@ -45,6 +49,9 @@ class State:
             self._by_key.setdefault((memory.kind, memory.key), []).append(memory.id)
             for ref in memory.derived_from:
                 self._children.setdefault(ref, set()).add(memory.id)
+                query = parse_query(ref)
+                if query is not None:
+                    self._queries.setdefault(query["kind"], {})[ref] = query
         self.status[memory.id] = record.status
         self.last[memory.id] = record
         self.lsn = record.lsn
@@ -63,8 +70,12 @@ class State:
         scopes: Iterable[str] | None = None,
         derived_from: str | None = None,
         status: str | None = LIVE,
+        where: dict[str, Any] | None = None,
     ) -> Iterator[Memory]:
-        """Memories matching every filter given, oldest first. status=None matches any status."""
+        """Memories matching every filter given, oldest first. status=None matches any status.
+
+        `where` matches body fields: `where={"source": "Metal"}` keeps memories whose body has source "Metal".
+        """
         if kind is not None and key is not None:
             ids: Iterable[str] = self._by_key.get((kind, key), [])
         elif derived_from is not None:
@@ -81,6 +92,7 @@ class State:
                 and (scopes is None or m.scope in scopes)
                 and (derived_from is None or derived_from in m.derived_from)
                 and (status is None or self.status[memory_id] == status)
+                and body_has(m.body, where)
             ):
                 yield m
 
@@ -95,3 +107,7 @@ class State:
                     found.add(child)
                     frontier.append(child)
         return sorted((m for m in found if self.is_live(m)), key=lambda m: self.last[m].lsn)
+
+    def reads_of(self, memory: Memory) -> list[str]:
+        """The query references whose results include `memory`: the reads it changes by going live."""
+        return [ref for ref, query in self._queries.get(memory.kind, {}).items() if matches(query, memory)]

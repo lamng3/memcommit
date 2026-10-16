@@ -10,6 +10,7 @@ from mneme import (
     Memory,
     MemoryStore,
     Rejected,
+    query_ref,
     scope_guard,
 )
 
@@ -117,3 +118,25 @@ def test_a_torn_final_write_is_dropped_on_restart(tmp_path):
         log.write('[{"lsn": 2, "txn"')  # the process died mid-write
     again = MemoryStore(JsonlEngine(path))
     assert again.lsn == 1
+
+
+def test_a_memory_that_changes_a_read_makes_what_was_built_on_it_stale():
+    store = MemoryStore()
+    read = query_ref("match", source="Ceramic")
+    answer = store.put("moira", "answer", "q", {"answer": "Ceramic (no alignment)"}, derived_from=[read])
+    summary = store.put("moira", "summary", "s", derived_from=[answer.id])
+    other = store.put("kroma", "match", "Metal|MetallicMaterial", {"source": "Metal"})
+    assert store.status(answer.id) == LIVE  # a match for another concept does not change the read
+
+    with store.transaction("kroma") as tx:
+        match = tx.put("match", "Ceramic|Ceramics", {"source": "Ceramic"})
+    assert [r.op for r in tx.committed.records] == ["put", "stale", "stale"]  # one transaction
+    assert store.status(answer.id) == STALE and store.status(summary.id) == STALE
+    assert store.find(kind="match", where={"source": "Ceramic"}) == [match]
+    assert store.status(other.id) == LIVE
+
+    # A memory written in the same transaction as the read is not undone by it.
+    with store.transaction("moira") as tx:
+        again = tx.put("answer", "q", {"answer": "Ceramic (Ceramics)"}, derived_from=[read, match.id])
+        tx.put("match", "Ceramic|Pottery", {"source": "Ceramic"})
+    assert store.status(again.id) == LIVE

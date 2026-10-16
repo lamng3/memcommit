@@ -11,6 +11,10 @@ records, asks every guard whether the commit may happen, appends the records
 to the engine in one call, applies them to the state, and then tells every
 observer. A transaction that raises writes nothing.
 
+A commit that brings a memory live also marks stale, in the same
+transaction, every memory built on a read (`query_ref`) whose result that
+memory changes. Memories written by the commit itself are left alone.
+
 Guards are the extension point for policy that must hold (scopes, provenance
 rules, a defense layer's checks); observers are the extension point for
 reactions (caches, schedulers, metrics). Neither is allowed to commit while
@@ -208,6 +212,7 @@ class MemoryStore:
             record = Record(lsn, self._txn + 1, op, memory, tx.agent, reason)
             statuses[memory.id] = record.status
             records.append(record)
+        records += self._changed_reads(records, statuses, tx.agent, lsn)
         if not records:
             return None
         commit = Commit(self._txn + 1, tx.agent, tuple(records))
@@ -225,3 +230,23 @@ class MemoryStore:
         finally:
             self._committing = False
         return commit
+
+    def _changed_reads(
+        self, records: list[Record], statuses: dict[str, str | None], agent: str, lsn: int
+    ) -> list[Record]:
+        """Stale records for memories derived from reads that `records` change by bringing a memory live."""
+        written = {r.memory.id for r in records}
+        out: list[Record] = []
+        for record in list(records):
+            if record.status != LIVE or self.state.is_live(record.memory.id):
+                continue
+            refs = self.state.reads_of(record.memory)
+            reason = f"{record.memory.kind} {record.memory.key!r} changes a read this was built on"
+            for memory_id in self.state.dependents(refs):
+                if memory_id in written or statuses.get(memory_id, LIVE) != LIVE:
+                    continue
+                lsn += 1
+                stale = Record(lsn, self._txn + 1, "stale", self.state.memories[memory_id], agent, reason)
+                statuses[memory_id] = STALE
+                out.append(stale)
+        return out

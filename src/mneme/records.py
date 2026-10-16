@@ -10,6 +10,12 @@ outside reference a client chooses (`ontology:materials@3`, `file:sha256...`).
 Provenance is what makes invalidation work: when a reference goes bad, every
 memory derived from it, directly or through other memories, goes stale.
 
+A reference can also name a read: `query_ref("match", source="Ceramic")` is
+`find:` plus the query, and a memory derived from it was built on what that
+query returned, including what it did not return. When a memory that matches
+the query goes live, everything derived from the query goes stale, so work
+that read "no match for Ceramic" is redone once there is one.
+
 Status is never stored on a memory. It comes from the log: a `Record` puts,
 restores, retracts, or marks stale one memory, and replaying the log in order
 gives each memory's status. That is the event-sourcing half of the design;
@@ -25,6 +31,7 @@ from typing import Any
 
 ID_LENGTH = 16
 MEMORY_PREFIX = "m:"
+QUERY_PREFIX = "find:"
 
 # Statuses a memory can have.
 LIVE, STALE, RETRACTED = "live", "stale", "retracted"
@@ -43,6 +50,35 @@ def canonical(value: Any) -> str:
 
 def is_memory_ref(ref: str) -> bool:
     return ref.startswith(MEMORY_PREFIX)
+
+
+def query_ref(kind: str, key: str | None = None, **where: Any) -> str:
+    """A reference to a read: memories of `kind` (and `key`) whose body has every field in `where`."""
+    query: dict[str, Any] = {"kind": kind}
+    if key is not None:
+        query["key"] = key
+    if where:
+        query["where"] = where
+    return QUERY_PREFIX + canonical(query)
+
+
+def parse_query(ref: str) -> dict[str, Any] | None:
+    """The query a `query_ref` names, or None for any other reference."""
+    return json.loads(ref[len(QUERY_PREFIX) :]) if ref.startswith(QUERY_PREFIX) else None
+
+
+def body_has(body: Any, where: dict[str, Any] | None) -> bool:
+    """True if `body` is a dict with every field in `where`, or `where` is empty."""
+    return not where or (isinstance(body, dict) and all(body.get(f) == v for f, v in where.items()))
+
+
+def matches(query: dict[str, Any], memory: Memory) -> bool:
+    """True if `memory` is in the result of the read `query` names."""
+    return (
+        memory.kind == query["kind"]
+        and query.get("key", memory.key) == memory.key
+        and body_has(memory.body, query.get("where"))
+    )
 
 
 @dataclass(frozen=True)

@@ -3,7 +3,7 @@
 from .blackboard import ERROR, RECEIPT, Agent, Blackboard, Step
 from .cache import Cache, CacheSync, DictCache
 from .engines import ENGINES, Engine, JsonlEngine, MemoryEngine
-from .records import LIVE, RETRACTED, SHARED, STALE, Commit, Memory, Record
+from .records import LIVE, RETRACTED, SHARED, STALE, Commit, Memory, Record, query_ref
 from .session import AgentSession, scope_guard
 from .state import State
 from .store import SYSTEM, MemoryStore, Rejected, Transaction
@@ -36,5 +36,6 @@ __all__ = [
     "State",
     "Step",
     "Transaction",
+    "query_ref",
     "scope_guard",
 ]
