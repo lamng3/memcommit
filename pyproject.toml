@@ -23,6 +23,9 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
 
+[project.scripts]
+mneme = "mneme.__main__:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

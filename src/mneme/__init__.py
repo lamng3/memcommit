@@ -10,6 +10,7 @@ with mneme.trace(store, "planner", "book a trip") as t:
 from pathlib import Path
 from typing import Any
 
+from .aio import AsyncMemoryStore
 from .audit import SEAL, blast_radius, chain_digest, diff, lineage, provenance_guard, quarantine, seal, verify
 from .blackboard import ERROR, RECEIPT, Agent, Blackboard, Step
 from .cache import Cache, CacheSync, DictCache
@@ -44,7 +45,7 @@ from .policies import (
     Scored,
     TwoQueue,
 )
-from .recall import Hit, LexicalIndex, Recall, VectorIndex
+from .recall import AnnIndex, Hit, LexicalIndex, Recall, VectorIndex
 from .records import (
     ARCHIVE,
     LIVE,
@@ -98,7 +99,9 @@ __all__ = [
     "Agent",
     "AgentSession",
     "AllOf",
+    "AnnIndex",
     "AnyOf",
+    "AsyncMemoryStore",
     "Blackboard",
     "Cache",
     "CacheStats",

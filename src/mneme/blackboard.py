@@ -16,6 +16,11 @@ invalidation that makes a result stale makes the receipt stale too, and the
 blackboard queues the input again. When an upstream fact is rolled back, the
 agents that built on it redo their work against what holds now.
 
+Upstream first. An agent may also name the kinds it `produces`. Then the
+queue runs agents in dependency order (a producer before its consumers, FIFO
+within a level), so a downstream agent does not do work that an upstream
+agent is about to make stale. Agents that name nothing run in FIFO order.
+
 A failing agent writes nothing: its transaction is dropped, and the failure
 is written as an `error` memory in the agent's scope. The input is not
 retried until something new happens to it.
@@ -63,9 +68,32 @@ class Blackboard:
         self.agents = {a.name: a for a in agents}
         self.sessions = {name: AgentSession(store, name) for name in self.agents}
         self.queue: deque[tuple[str, str]] = deque()
+        self.rank = self._ranks()
         self._queued: set[tuple[str, str]] = set()
         store.subscribe(self._observe)
         self._backfill()
+
+    def _ranks(self) -> dict[str, int]:
+        """Each agent's depth in the produces -> consumes graph: producers 0, their consumers 1, and so on."""
+        produces = {name: frozenset(getattr(a, "produces", ())) for name, a in self.agents.items()}
+        rank = dict.fromkeys(self.agents, 0)
+        for _ in range(len(self.agents)):  # longest path, at most n rounds; a cycle stops growing it
+            changed = False
+            for name, agent in self.agents.items():
+                for upstream, kinds in produces.items():
+                    if upstream != name and kinds & agent.consumes and rank[name] < rank[upstream] + 1:
+                        rank[name] = min(rank[upstream] + 1, len(self.agents))
+                        changed = True
+            if not changed:
+                break
+        return rank
+
+    def _next(self) -> tuple[str, str]:
+        """The queued item whose agent is furthest upstream, oldest first."""
+        best = min(range(len(self.queue)), key=lambda i: (self.rank[self.queue[i][0]], i))
+        item = self.queue[best]
+        del self.queue[best]
+        return item
 
     def _consumers(self, kind: str) -> list[str]:
         return [name for name, a in self.agents.items() if kind in a.consumes]
@@ -106,7 +134,7 @@ class Blackboard:
         """Hand queued inputs to their agents until the queue is empty or `max_steps` is reached."""
         steps: list[Step] = []
         while self.queue and len(steps) < max_steps:
-            item = self.queue.popleft()
+            item = self._next()
             self._queued.discard(item)
             agent_name, memory_id = item
             if not self.store.state.is_live(memory_id) or self._done(agent_name, memory_id):

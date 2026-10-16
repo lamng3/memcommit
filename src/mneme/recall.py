@@ -12,6 +12,10 @@ comes from an index, which is a `Cache` kept in step with the store by
 - `LexicalIndex`: BM25 over the words of a memory's key and body. No dependencies.
 - `VectorIndex`: cosine similarity over embeddings from any `Embedder`, a
   function from texts to vectors (a local model, an API, a test stub).
+- `AnnIndex`: the same, approximately, for many memories: random-hyperplane
+  locality-sensitive hashing (Charikar, 2002) in several tables, probing each
+  query's bucket and its one-bit neighbours, then exact cosine on what it
+  found. No dependencies; recall and speed trade off through `tables` and `bits`.
 
 Recency decays with the number of log records since the memory was last
 touched, so it is deterministic and does not depend on wall time. Hits are
@@ -23,6 +27,7 @@ and promotion policies. By default the archive is not searched; pass
 from __future__ import annotations
 
 import math
+import random
 import re
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
@@ -127,6 +132,55 @@ class VectorIndex:
         return {m: max(0.0, sum(a * b for a, b in zip(q, v, strict=True))) for m, v in self.vectors.items()}
 
 
+class AnnIndex:
+    """Approximate cosine search by random-hyperplane LSH. A `Cache`, like `VectorIndex`."""
+
+    def __init__(self, embed: Embedder, dimensions: int, tables: int = 8, bits: int = 12, seed: int = 0) -> None:
+        self.embed = embed
+        rng = random.Random(seed)
+        self.planes = [[[rng.gauss(0, 1) for _ in range(dimensions)] for _ in range(bits)] for _ in range(tables)]
+        self.buckets: list[dict[int, set[str]]] = [{} for _ in range(tables)]
+        self.vectors: dict[str, list[float]] = {}
+        self.codes: dict[str, list[int]] = {}
+
+    def _code(self, table: int, vector: Sequence[float]) -> int:
+        code = 0
+        for i, plane in enumerate(self.planes[table]):
+            if sum(a * b for a, b in zip(plane, vector, strict=True)) >= 0:
+                code |= 1 << i
+        return code
+
+    def admit(self, memory: Memory) -> None:
+        if memory.id in self.vectors:
+            return
+        vector = _unit(self.embed([text_of(memory)])[0])
+        self.vectors[memory.id] = vector
+        self.codes[memory.id] = [self._code(t, vector) for t in range(len(self.planes))]
+        for t, code in enumerate(self.codes[memory.id]):
+            self.buckets[t].setdefault(code, set()).add(memory.id)
+
+    def evict(self, memory: Memory) -> None:
+        if self.vectors.pop(memory.id, None) is None:
+            return
+        for t, code in enumerate(self.codes.pop(memory.id)):
+            bucket = self.buckets[t].get(code, set())
+            bucket.discard(memory.id)
+            if not bucket:
+                self.buckets[t].pop(code, None)
+
+    def candidates(self, vector: Sequence[float]) -> set[str]:
+        found: set[str] = set()
+        for t, planes in enumerate(self.planes):
+            code = self._code(t, vector)
+            for probe in (code, *(code ^ (1 << i) for i in range(len(planes)))):
+                found |= self.buckets[t].get(probe, set())
+        return found
+
+    def scores(self, query: str) -> dict[str, float]:
+        q = _unit(self.embed([query])[0])
+        return {m: max(0.0, sum(a * b for a, b in zip(q, self.vectors[m], strict=True))) for m in self.candidates(q)}
+
+
 def _unit(vector: Sequence[float]) -> list[float]:
     norm = math.sqrt(sum(x * x for x in vector)) or 1.0
     return [x / norm for x in vector]
@@ -145,7 +199,7 @@ class Recall:
     def __init__(
         self,
         store: MemoryStore,
-        index: LexicalIndex | VectorIndex | None = None,
+        index: LexicalIndex | VectorIndex | AnnIndex | None = None,
         tiers: TieredMemory | None = None,
         relevance: float = 1.0,
         recency: float = 0.5,
