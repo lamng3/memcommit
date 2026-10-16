@@ -31,8 +31,11 @@ Status says whether a memory still holds:
 
 Tier says where a memory sits, which is what retrieval and policies act on:
 
-- `short`: working memory, bounded, where every new memory starts.
-- `long`: consolidated memory, promoted from short-term by a policy.
+- `short`: working memory, bounded, where every new memory starts: a cache.
+- `mid`: optional, between short and long: memories evicted from the cache,
+  grouped into segments (by trace or topic) until a segment is hot enough to
+  promote or cold enough to consolidate.
+- `long`: consolidated memory, promoted from short- or mid-term by a policy.
 - `archive`: evicted from working memory; kept, and searched only on request.
 """
 
@@ -40,6 +43,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -52,8 +56,8 @@ LIVE, STALE, RETRACTED = "live", "stale", "retracted"
 STATUSES = (LIVE, STALE, RETRACTED)
 
 # Tiers a memory can sit in.
-SHORT, LONG, ARCHIVE = "short", "long", "archive"
-TIERS = (SHORT, LONG, ARCHIVE)
+SHORT, MID, LONG, ARCHIVE = "short", "mid", "long", "archive"
+TIERS = (SHORT, MID, LONG, ARCHIVE)
 
 # Record operations, and the status each leaves its memory in. `move` changes only the tier.
 OPS: dict[str, str | None] = {"put": LIVE, "restore": LIVE, "stale": STALE, "retract": RETRACTED, "move": None}
@@ -70,11 +74,16 @@ def is_memory_ref(ref: str) -> bool:
     return ref.startswith(MEMORY_PREFIX)
 
 
-def query_ref(kind: str, key: str | None = None, **where: Any) -> str:
-    """A reference to a read: memories of `kind` (and `key`) whose body has every field in `where`."""
+def query_ref(kind: str, key: str | None = None, scopes: Iterable[str] | None = None, **where: Any) -> str:
+    """A reference to a read: memories of `kind` (and `key`, in `scopes`) whose body has every field in `where`.
+
+    Pass the reader's `scopes` so a memory it could not see does not invalidate its work.
+    """
     query: dict[str, Any] = {"kind": kind}
     if key is not None:
         query["key"] = key
+    if scopes is not None:
+        query["scopes"] = sorted(set(scopes))
     if where:
         query["where"] = where
     return QUERY_PREFIX + canonical(query)
@@ -95,6 +104,7 @@ def matches(query: dict[str, Any], memory: Memory) -> bool:
     return (
         memory.kind == query["kind"]
         and query.get("key", memory.key) == memory.key
+        and ("scopes" not in query or memory.scope in query["scopes"])
         and body_has(memory.body, query.get("where"))
     )
 

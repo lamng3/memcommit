@@ -15,9 +15,11 @@ A missed memory is paged back in on use, as a cache would refill a line.
 `synthetic` makes a workload with the shape agent runs have: tasks that write
 bursts of trace steps, a few of which matter, then later tasks that reuse
 earlier memories with a popularity skew (Zipf) and a pull towards the recent
-and the important. It is seeded, so a benchmark is reproducible. Recorded
-traces from a real system are a better workload when you have them: turn
-each step into a `Write` and each recalled memory into a `Use`.
+and the important. It is seeded, so a benchmark is reproducible.
+
+`from_access_log` builds the workload from what agents actually did: run them
+on a store with `TieredMemory(..., access=AccessLog(record=True))`, and every
+write and every use is kept in order, ready to replay under other policies.
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ from dataclasses import asdict, dataclass
 from .policies import EvictionPolicy, PromotionPolicy
 from .records import ARCHIVE
 from .store import MemoryStore
-from .tiers import TieredMemory
+from .tiers import AccessLog, TieredMemory
 
 
 @dataclass(frozen=True)
@@ -150,3 +152,16 @@ def compare(
             eviction, promotion = make()
             out.append(replay(events, eviction, capacity, promotion, name=name))
     return out
+
+
+def from_access_log(store: MemoryStore, access: AccessLog) -> list[Event]:
+    """The writes and uses an `AccessLog(record=True)` kept, as a workload over the store's memories."""
+    if not access.record:
+        raise ValueError("this access log did not record events; create it with AccessLog(record=True)")
+    events: list[Event] = []
+    for kind, memory_id in access.events:
+        memory = store.get(memory_id)
+        if memory is None:
+            continue
+        events.append(Write(memory_id, memory.kind, memory.importance) if kind == "write" else Use(memory_id))
+    return events

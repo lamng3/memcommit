@@ -13,9 +13,19 @@ from typing import Any
 from .audit import SEAL, blast_radius, chain_digest, diff, lineage, provenance_guard, quarantine, seal, verify
 from .blackboard import ERROR, RECEIPT, Agent, Blackboard, Step
 from .cache import Cache, CacheSync, DictCache
-from .compaction import SUMMARY, CompactionPolicy, Compactor, FinishedTraces, outline
+from .compaction import (
+    SUMMARY,
+    CompactionPolicy,
+    Compactor,
+    FinishedTraces,
+    KeepFailed,
+    OlderThan,
+    UnderPressure,
+    outline,
+)
 from .engines import ENGINES, Engine, JsonlEngine, MemoryEngine, SqliteEngine, open_engine
 from .policies import (
+    ARC,
     FIFO,
     LFU,
     LRU,
@@ -28,6 +38,7 @@ from .policies import (
     Forgetting,
     ImportanceAtLeast,
     KindIn,
+    Learned,
     Never,
     PromotionPolicy,
     Scored,
@@ -38,6 +49,7 @@ from .records import (
     ARCHIVE,
     LIVE,
     LONG,
+    MID,
     RETRACTED,
     SHARED,
     SHORT,
@@ -50,7 +62,7 @@ from .records import (
 from .session import AgentSession, scope_guard
 from .state import State
 from .store import SYSTEM, MemoryStore, Rejected, Transaction
-from .tiers import AccessLog, Maintenance, TieredMemory
+from .tiers import AccessLog, CacheStats, Maintenance, TieredMemory, by_scope, by_trace
 from .traces import Trace, trace
 
 __version__ = "0.1.0"
@@ -62,6 +74,7 @@ def open(path: str | Path, **options: Any) -> MemoryStore:
 
 
 __all__ = [
+    "ARC",
     "ARCHIVE",
     "ENGINES",
     "ERROR",
@@ -70,6 +83,7 @@ __all__ = [
     "LIVE",
     "LONG",
     "LRU",
+    "MID",
     "RECEIPT",
     "RETRACTED",
     "SEAL",
@@ -87,6 +101,7 @@ __all__ = [
     "AnyOf",
     "Blackboard",
     "Cache",
+    "CacheStats",
     "CacheSync",
     "Candidate",
     "Commit",
@@ -100,13 +115,16 @@ __all__ = [
     "Hit",
     "ImportanceAtLeast",
     "JsonlEngine",
+    "KeepFailed",
     "KindIn",
+    "Learned",
     "LexicalIndex",
     "Maintenance",
     "Memory",
     "MemoryEngine",
     "MemoryStore",
     "Never",
+    "OlderThan",
     "PromotionPolicy",
     "Recall",
     "Record",
@@ -119,8 +137,11 @@ __all__ = [
     "Trace",
     "Transaction",
     "TwoQueue",
+    "UnderPressure",
     "VectorIndex",
     "blast_radius",
+    "by_scope",
+    "by_trace",
     "chain_digest",
     "diff",
     "lineage",

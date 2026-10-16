@@ -14,9 +14,18 @@ needs no model: the task, the outcome, the tools called, the results, the
 errors. A summarizer backed by a language model (a reflection, in the sense of
 Generative Agents and Reflexion) is a function with the same signature.
 
-Which traces to compact is the `CompactionPolicy`'s choice. `FinishedTraces`
-compacts every ended trace without a live summary, optionally keeping the
-newest few whole.
+Which traces to compact is the `CompactionPolicy`'s choice:
+
+- `FinishedTraces(keep_recent)`: every ended trace, except the newest few.
+- `OlderThan(records)`: traces that ended at least `records` log records ago.
+- `KeepFailed(inner, records)`: as `inner`, but a failed trace stays whole
+  (its steps are what a debugger or a defender reads) until it is older.
+- `UnderPressure(tiers, fraction, inner)`: as `inner`, but only while some
+  short-term partition is past `fraction` of its capacity.
+
+`Compactor.merge(by)` compacts summaries in turn: summaries of the same task
+(or any key) fold into one, derived from all of them, so a task an agent ran
+fifty times leaves one memory of how it tends to go.
 """
 
 from __future__ import annotations
@@ -46,6 +55,52 @@ class FinishedTraces:
 
     def select(self, traces: Sequence[Trace]) -> list[Trace]:
         return list(traces[: max(0, len(traces) - self.keep_recent)])
+
+
+def _end_lsn(t: Trace) -> int:
+    ends = [m for m in t.steps if m.kind == TRACE_END]
+    return t.store.state.first[ends[-1].id].lsn if ends else t.store.lsn
+
+
+class OlderThan:
+    """Compact traces that ended at least `records` log records ago."""
+
+    def __init__(self, records: int) -> None:
+        self.records = records
+
+    def select(self, traces: Sequence[Trace]) -> list[Trace]:
+        return [t for t in traces if t.store.lsn - _end_lsn(t) >= self.records]
+
+
+class KeepFailed:
+    """As `inner`, but keep failed traces whole until they ended `records` log records ago."""
+
+    def __init__(self, inner: CompactionPolicy | None = None, records: int = 1000) -> None:
+        self.inner = inner or FinishedTraces()
+        self.records = records
+
+    def select(self, traces: Sequence[Trace]) -> list[Trace]:
+        return [t for t in self.inner.select(traces) if t.status() == "ok" or t.store.lsn - _end_lsn(t) >= self.records]
+
+
+class UnderPressure:
+    """As `inner`, but only while a short-term partition is past `fraction` of its capacity."""
+
+    def __init__(self, tiers: Any, fraction: float = 0.8, inner: CompactionPolicy | None = None) -> None:
+        self.tiers = tiers
+        self.fraction = fraction
+        self.inner = inner or FinishedTraces()
+
+    def select(self, traces: Sequence[Trace]) -> list[Trace]:
+        counts: dict[str, int] = {}
+        state = self.tiers.store.state
+        for memory_id, tier in state.tier.items():
+            if tier == "short":
+                p = self.tiers.partition(state.memories[memory_id])
+                counts[p] = counts.get(p, 0) + 1
+        if max(counts.values(), default=0) < self.fraction * self.tiers.capacity:
+            return []
+        return self.inner.select(traces)
 
 
 def outline(t: Trace) -> dict[str, Any]:
@@ -118,3 +173,40 @@ class Compactor:
     def run(self) -> list[Memory]:
         """Compact what the policy selects. Returns the summaries written."""
         return [self.compact(t) for t in self.policy.select(self.pending())]
+
+    def merge(self, by: Callable[[Memory], str] | None = None, minimum: int = 2) -> list[Memory]:
+        """Fold live trace summaries that share a key (the task, by default) into one merged summary each."""
+        by = by or (lambda m: m.body.get("task", m.key))
+        groups: dict[str, list[Memory]] = {}
+        for summary in self.store.find(kind=SUMMARY, tiers=["short", "mid", "long"]):  # archived: merged already
+            if summary.body.get("trace"):
+                groups.setdefault(by(summary), []).append(summary)
+        merged = []
+        for key, summaries in groups.items():
+            if len(summaries) < minimum:
+                continue
+            statuses: dict[str, int] = {}
+            for m in summaries:
+                statuses[str(m.body.get("status"))] = statuses.get(str(m.body.get("status")), 0) + 1
+            body = {
+                "merged": key,
+                "runs": len(summaries),
+                "statuses": statuses,
+                "tools": sorted({t for m in summaries for t in m.body.get("tools", []) if t}),
+                "results": [r for m in summaries for r in m.body.get("results", [])][-10:],
+                "errors": [e for m in summaries for e in m.body.get("errors", [])][-10:],
+            }
+            with self.store.transaction(self.agent) as tx:
+                merged_memory = tx.put(
+                    SUMMARY,
+                    f"merged:{key}",
+                    body,
+                    scope=summaries[0].scope,
+                    derived_from=[m.id for m in summaries],
+                    importance=max(m.importance for m in summaries),
+                    tier=LONG,
+                )
+                for m in summaries:
+                    tx.move(m.id, ARCHIVE, f"merged into {merged_memory.id}")
+            merged.append(merged_memory)
+        return merged
