@@ -52,18 +52,53 @@ class State:
             self.memories[memory.id] = memory
             self.first[memory.id] = record
             self.tier[memory.id] = record.tier or SHORT
-            self._by_key.setdefault((memory.kind, memory.key), []).append(memory.id)
-            for ref in memory.derived_from:
-                self._children.setdefault(ref, set()).add(memory.id)
-                query = parse_query(ref)
-                if query is not None:
-                    self._queries.setdefault(query["kind"], {})[ref] = query
+            self._index(memory)
         if record.op == "move":
             self.tier[memory.id] = record.tier
         else:
             self.status[memory.id] = record.status
         self.last[memory.id] = record
         self.lsn = record.lsn
+
+    def _index(self, memory: Memory) -> None:
+        self._by_key.setdefault((memory.kind, memory.key), []).append(memory.id)
+        for ref in memory.derived_from:
+            self._children.setdefault(ref, set()).add(memory.id)
+            query = parse_query(ref)
+            if query is not None:
+                self._queries.setdefault(query["kind"], {})[ref] = query
+
+    # Snapshots -----------------------------------------------------------
+
+    def to_json(self) -> dict[str, Any]:
+        """The state as JSON: each memory's first and last record, which carry everything else."""
+        return {
+            "lsn": self.lsn,
+            "memories": [
+                {
+                    "first": self.first[m].to_json(),
+                    "last": self.last[m].to_json(),
+                    "status": self.status[m],
+                    "tier": self.tier[m],
+                }
+                for m in sorted(self.memories, key=lambda m: self.first[m].lsn)
+            ],
+        }
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> State:
+        """Rebuild a state, indexes included, from `to_json`."""
+        state = cls(lsn=data["lsn"])
+        for entry in data["memories"]:
+            first, last = Record.from_json(entry["first"]), Record.from_json(entry["last"])
+            memory = first.memory
+            state.memories[memory.id] = memory
+            state.first[memory.id] = first
+            state.last[memory.id] = last if last.lsn != first.lsn else first
+            state.status[memory.id] = entry["status"]
+            state.tier[memory.id] = entry["tier"]
+            state._index(memory)
+        return state
 
     def get(self, memory_id: str) -> Memory | None:
         return self.memories.get(memory_id)

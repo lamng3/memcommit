@@ -30,10 +30,13 @@ what undid it.
 
 from __future__ import annotations
 
+import json
+import os
 import time
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any
 
 from .engines import Engine, MemoryEngine
@@ -118,11 +121,18 @@ class MemoryStore:
         guards: Sequence[Guard] = (),
         observers: Sequence[Observer] = (),
         clock: Callable[[], float] = time.time,
+        snapshot: str | Path | None = None,
     ) -> None:
+        """Open a store on `engine`. With `snapshot`, start from that file and replay only the records after it."""
         self.engine = engine or MemoryEngine()
-        records = self.engine.records()
-        self.state = State.replay(records)
-        self._txn = max((r.txn for r in records), default=0)
+        self.snapshot = Path(snapshot) if snapshot is not None else None
+        self.state, self._txn = State(), 0
+        if self.snapshot is not None and self.snapshot.exists():
+            data = json.loads(self.snapshot.read_text(encoding="utf-8"))
+            self.state, self._txn = State.from_json(data["state"]), data["txn"]
+        for record in self.engine.records_after(self.state.lsn):
+            self.state.apply(record)
+            self._txn = max(self._txn, record.txn)
         self.guards: list[Guard] = list(guards)
         self.observers: list[Observer] = list(observers)
         self.clock = clock
@@ -161,6 +171,24 @@ class MemoryStore:
     def as_of(self, lsn: int) -> State:
         """The state right after `lsn`, rebuilt from the log."""
         return State.replay(self.engine.records(), until=lsn)
+
+    def refresh(self) -> list[Record]:
+        """Apply records another writer appended to the engine since this store last read it."""
+        new = self.engine.records_after(self.lsn)
+        for record in new:
+            self.state.apply(record)
+            self._txn = max(self._txn, record.txn)
+        return new
+
+    def save_snapshot(self, path: str | Path | None = None) -> Path:
+        """Write the state to `path` (default: the store's snapshot file), atomically. Returns the path."""
+        path = Path(path) if path is not None else self.snapshot
+        if path is None:
+            raise ValueError("no snapshot path: pass one, or open the store with snapshot=")
+        temp = path.with_suffix(path.suffix + ".tmp")
+        temp.write_text(json.dumps({"txn": self._txn, "state": self.state.to_json()}), encoding="utf-8")
+        os.replace(temp, path)
+        return path
 
     # Extension points ----------------------------------------------------
 

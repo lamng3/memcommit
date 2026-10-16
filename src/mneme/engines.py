@@ -1,7 +1,10 @@
 """Storage engines: where the log lives. The store talks only to `Engine`.
 
 An engine has two jobs: append one transaction's records atomically, and
-return every record in log order. It knows nothing about statuses, scopes,
+return every record in log order. Two more have defaults an engine may speed
+up: `records_after(lsn)`, the tail a snapshot or a remote reader needs, and
+`rewrite(records)`, which atomically replaces the whole log with a compacted
+one (`mneme.compact`). It knows nothing about statuses, scopes,
 or agents; the store rebuilds those by replay.
 
 - `MemoryEngine`: a list, for tests and short runs.
@@ -56,6 +59,14 @@ class Engine(ABC):
     def records(self) -> list[Record]:
         """Every record, in log order."""
 
+    def records_after(self, lsn: int) -> list[Record]:
+        """Records with an LSN after `lsn`, in log order."""
+        return [r for r in self.records() if r.lsn > lsn]
+
+    def rewrite(self, records: Sequence[Record]) -> None:
+        """Replace the whole log with `records`, atomically: a reader sees the old log or the new one."""
+        raise NotImplementedError(f"{type(self).__name__} cannot rewrite its log")
+
 
 @register("memory")
 class MemoryEngine(Engine):
@@ -67,6 +78,9 @@ class MemoryEngine(Engine):
 
     def records(self) -> list[Record]:
         return list(self._records)
+
+    def rewrite(self, records: Sequence[Record]) -> None:
+        self._records = list(records)
 
 
 @register("jsonl")
@@ -99,6 +113,19 @@ class JsonlEngine(Engine):
             out.extend(Record.from_json(r) for r in batch)
         return out
 
+    def rewrite(self, records: Sequence[Record]) -> None:
+        """Write the new log beside the old one, fsync it, and rename it over: atomic on POSIX."""
+        batches: dict[int, list[Record]] = {}
+        for r in records:
+            batches.setdefault(r.txn, []).append(r)
+        temp = self.path.with_suffix(self.path.suffix + ".compact")
+        with temp.open("w", encoding="utf-8") as log:
+            for batch in sorted(batches.values(), key=lambda b: b[0].lsn):
+                log.write(canonical([r.to_json() for r in batch]) + "\n")
+            log.flush()
+            os.fsync(log.fileno())
+        os.replace(temp, self.path)
+
 
 @register("sqlite")
 class SqliteEngine(Engine):
@@ -119,8 +146,20 @@ class SqliteEngine(Engine):
             )
 
     def records(self) -> list[Record]:
-        rows = self._db.execute("SELECT record FROM records ORDER BY lsn")
+        return self.records_after(0)
+
+    def records_after(self, lsn: int) -> list[Record]:
+        rows = self._db.execute("SELECT record FROM records WHERE lsn > ? ORDER BY lsn", (lsn,))
         return [Record.from_json(json.loads(row[0])) for row in rows]
+
+    def rewrite(self, records: Sequence[Record]) -> None:
+        with self._db:  # one SQLite transaction: the old log or the new one
+            self._db.execute("DELETE FROM records")
+            self._db.executemany(
+                "INSERT INTO records (lsn, txn, record) VALUES (?, ?, ?)",
+                [(r.lsn, r.txn, canonical(r.to_json())) for r in records],
+            )
+        self._db.execute("VACUUM")
 
     def close(self) -> None:
         self._db.close()

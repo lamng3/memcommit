@@ -21,6 +21,9 @@ This module gives a defender the tools that design makes possible.
 - `seal(store)`: write a `seal` memory holding a hash chain over the log up to
   now. `verify` recomputes every seal, so a record deleted, reordered, or
   altered before a seal is caught even when the attacker rewrote the body's id.
+  After a log compaction (`storage.compact`), seals from before its horizon
+  describe a log that no longer exists and are skipped, and references to the
+  memories it purged are expected.
 
 None of these decide what is malicious. That is the defender's job; these
 make its decisions cheap and its repairs exact.
@@ -67,10 +70,15 @@ def verify(store: MemoryStore, scopes: bool = True) -> list[str]:
     seen: set[str] = set()
     last_lsn, last_txn = 0, 0
     records = store.engine.records()
+    manifests = [
+        r.memory.body for r in records if r.op == "put" and r.memory.kind == "compaction" and r.agent == SYSTEM
+    ]
+    horizon = max((b["horizon"] for b in manifests), default=0)
+    purged = {m for b in manifests for m in b["purged"]}
     for record in records:
         if record.op == "put" and record.memory.kind == SEAL and record.agent == SYSTEM:
             body = record.memory.body
-            if chain_digest(records, body["lsn"]) != body["digest"]:
+            if body["lsn"] > horizon and chain_digest(records, body["lsn"]) != body["digest"]:
                 problems.append(f"lsn {record.lsn}: the log up to lsn {body['lsn']} no longer matches its seal")
         m = record.memory
         where = f"lsn {record.lsn}"
@@ -85,7 +93,7 @@ def verify(store: MemoryStore, scopes: bool = True) -> list[str]:
         if record.op != "put" and m.id not in seen:
             problems.append(f"{where}: {record.op} of {m.id}, which was never put")
         if record.op == "put":
-            missing = [r for r in m.memory_refs() if r not in seen]
+            missing = [r for r in m.memory_refs() if r not in seen and r not in purged]
             if missing:
                 problems.append(f"{where}: {m.kind} {m.key!r} is derived from unknown memories {missing}")
             if scopes and record.agent not in (SYSTEM, m.source):
