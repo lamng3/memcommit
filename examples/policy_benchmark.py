@@ -40,11 +40,19 @@ def main() -> None:
     writes = sum(type(e).__name__ == "Write" for e in events)
     print(f"workload: {writes} writes, {len(events) - writes} uses (seed {args.seed})\n")
     reports = compare(events, POLICIES, CAPACITIES)
-    print(f"{'policy':28} " + " ".join(f"{'cap ' + str(c):>9}" for c in CAPACITIES) + "   peak working (cap 32)")
+    print(
+        f"{'policy':28} "
+        + " ".join(f"{'cap ' + str(c):>9}" for c in CAPACITIES)
+        + "   peak working, log records, ms (cap 32)"
+    )
     for name in POLICIES:
         rows = [r for r in reports if r.policy == name]
-        peak = next(r.peak_working for r in rows if r.capacity == 32)
-        print(f"{name:28} " + " ".join(f"{r.hit_rate:9.3f}" for r in rows) + f"   {peak}")
+        at32 = next(r for r in rows if r.capacity == 32)
+        print(
+            f"{name:28} "
+            + " ".join(f"{r.hit_rate:9.3f}" for r in rows)
+            + f"   {at32.peak_working}, {at32.records}, {at32.seconds * 1000:.0f}"
+        )
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         data = {"seed": args.seed, "workload": "synthetic", "reports": [r.to_json() for r in reports]}

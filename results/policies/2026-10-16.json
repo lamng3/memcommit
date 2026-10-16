@@ -11,6 +11,8 @@
       "evicted": 577,
       "paged_in": 233,
       "peak_working": 16,
+      "records": 1170,
+      "seconds": 0.0327,
       "hit_rate": 0.5064
     },
     {
@@ -22,6 +24,8 @@
       "evicted": 513,
       "paged_in": 169,
       "peak_working": 16,
+      "records": 1042,
+      "seconds": 0.0307,
       "hit_rate": 0.6419
     },
     {
@@ -33,6 +37,8 @@
       "evicted": 649,
       "paged_in": 305,
       "peak_working": 16,
+      "records": 1314,
+      "seconds": 0.0348,
       "hit_rate": 0.3538
     },
     {
@@ -44,6 +50,8 @@
       "evicted": 638,
       "paged_in": 294,
       "peak_working": 16,
+      "records": 1292,
+      "seconds": 0.038,
       "hit_rate": 0.3771
     },
     {
@@ -55,6 +63,8 @@
       "evicted": 510,
       "paged_in": 166,
       "peak_working": 16,
+      "records": 1036,
+      "seconds": 0.0325,
       "hit_rate": 0.6483
     },
     {
@@ -66,6 +76,8 @@
       "evicted": 636,
       "paged_in": 292,
       "peak_working": 16,
+      "records": 1288,
+      "seconds": 0.0356,
       "hit_rate": 0.3814
     },
     {
@@ -77,6 +89,8 @@
       "evicted": 556,
       "paged_in": 212,
       "peak_working": 16,
+      "records": 1128,
+      "seconds": 0.033,
       "hit_rate": 0.5508
     },
     {
@@ -88,6 +102,8 @@
       "evicted": 520,
       "paged_in": 176,
       "peak_working": 16,
+      "records": 1056,
+      "seconds": 0.0391,
       "hit_rate": 0.6271
     },
     {
@@ -99,6 +115,8 @@
       "evicted": 317,
       "paged_in": 62,
       "peak_working": 105,
+      "records": 830,
+      "seconds": 0.0363,
       "hit_rate": 0.8686
     },
     {
@@ -110,6 +128,8 @@
       "evicted": 447,
       "paged_in": 174,
       "peak_working": 87,
+      "records": 1052,
+      "seconds": 0.0448,
       "hit_rate": 0.6314
     },
     {
@@ -121,6 +141,8 @@
       "evicted": 540,
       "paged_in": 212,
       "peak_working": 32,
+      "records": 1112,
+      "seconds": 0.0422,
       "hit_rate": 0.5508
     },
     {
@@ -132,6 +154,8 @@
       "evicted": 449,
       "paged_in": 121,
       "peak_working": 32,
+      "records": 930,
+      "seconds": 0.0378,
       "hit_rate": 0.7436
     },
     {
@@ -143,6 +167,8 @@
       "evicted": 583,
       "paged_in": 255,
       "peak_working": 32,
+      "records": 1198,
+      "seconds": 0.0462,
       "hit_rate": 0.4597
     },
     {
@@ -154,6 +180,8 @@
       "evicted": 544,
       "paged_in": 216,
       "peak_working": 32,
+      "records": 1120,
+      "seconds": 0.0482,
       "hit_rate": 0.5424
     },
     {
@@ -165,6 +193,8 @@
       "evicted": 436,
       "paged_in": 108,
       "peak_working": 32,
+      "records": 904,
+      "seconds": 0.0408,
       "hit_rate": 0.7712
     },
     {
@@ -176,6 +206,8 @@
       "evicted": 573,
       "paged_in": 245,
       "peak_working": 32,
+      "records": 1178,
+      "seconds": 0.0471,
       "hit_rate": 0.4809
     },
     {
@@ -187,6 +219,8 @@
       "evicted": 487,
       "paged_in": 159,
       "peak_working": 32,
+      "records": 1006,
+      "seconds": 0.0414,
       "hit_rate": 0.6631
     },
     {
@@ -198,6 +232,8 @@
       "evicted": 450,
       "paged_in": 122,
       "peak_working": 32,
+      "records": 932,
+      "seconds": 0.0513,
       "hit_rate": 0.7415
     },
     {
@@ -209,6 +245,8 @@
       "evicted": 289,
       "paged_in": 50,
       "peak_working": 121,
+      "records": 790,
+      "seconds": 0.0514,
       "hit_rate": 0.8941
     },
     {
@@ -220,6 +258,8 @@
       "evicted": 320,
       "paged_in": 63,
       "peak_working": 103,
+      "records": 814,
+      "seconds": 0.0625,
       "hit_rate": 0.8665
     },
     {
@@ -231,6 +271,8 @@
       "evicted": 484,
       "paged_in": 188,
       "peak_working": 64,
+      "records": 1032,
+      "seconds": 0.0618,
       "hit_rate": 0.6017
     },
     {
@@ -242,6 +284,8 @@
       "evicted": 377,
       "paged_in": 81,
       "peak_working": 64,
+      "records": 818,
+      "seconds": 0.0505,
       "hit_rate": 0.8284
     },
     {
@@ -253,6 +297,8 @@
       "evicted": 482,
       "paged_in": 186,
       "peak_working": 64,
+      "records": 1028,
+      "seconds": 0.0641,
       "hit_rate": 0.6059
     },
     {
@@ -264,6 +310,8 @@
       "evicted": 378,
       "paged_in": 82,
       "peak_working": 64,
+      "records": 820,
+      "seconds": 0.0566,
       "hit_rate": 0.8263
     },
     {
@@ -275,6 +323,8 @@
       "evicted": 359,
       "paged_in": 63,
       "peak_working": 64,
+      "records": 782,
+      "seconds": 0.0561,
       "hit_rate": 0.8665
     },
     {
@@ -286,6 +336,8 @@
       "evicted": 482,
       "paged_in": 186,
       "peak_working": 64,
+      "records": 1028,
+      "seconds": 0.0701,
       "hit_rate": 0.6059
     },
     {
@@ -297,6 +349,8 @@
       "evicted": 408,
       "paged_in": 112,
       "peak_working": 64,
+      "records": 880,
+      "seconds": 0.0552,
       "hit_rate": 0.7627
     },
     {
@@ -308,6 +362,8 @@
       "evicted": 389,
       "paged_in": 93,
       "peak_working": 64,
+      "records": 842,
+      "seconds": 0.0892,
       "hit_rate": 0.803
     },
     {
@@ -319,6 +375,8 @@
       "evicted": 243,
       "paged_in": 36,
       "peak_working": 153,
+      "records": 730,
+      "seconds": 0.0753,
       "hit_rate": 0.9237
     },
     {
@@ -330,6 +388,8 @@
       "evicted": 262,
       "paged_in": 37,
       "peak_working": 135,
+      "records": 730,
+      "seconds": 0.0873,
       "hit_rate": 0.9216
     }
   ]

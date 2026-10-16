@@ -9,7 +9,8 @@ A workload is a list of events:
 from the policies under test. A use is a **hit** when the memory is in working
 memory (short- or long-term) at that moment, and a **miss** when it has been
 evicted to the archive and would have to be searched for. The report also
-gives promotions, evictions, page-ins, and the largest working memory seen.
+gives promotions, evictions, page-ins, the largest working memory seen, and
+what the policy costs: log records written (storage) and replay time (compute).
 A missed memory is paged back in on use, as a cache would refill a line.
 
 `synthetic` makes a workload with the shape agent runs have: tasks that write
@@ -25,6 +26,7 @@ write and every use is kept in order, ready to replay under other policies.
 from __future__ import annotations
 
 import random
+import time
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 
@@ -59,6 +61,8 @@ class Report:
     evicted: int
     paged_in: int
     peak_working: int
+    records: int = 0  # log records written: what the policy costs in storage
+    seconds: float = 0.0  # wall time of the replay: what it costs in compute
 
     @property
     def hit_rate(self) -> float:
@@ -76,6 +80,7 @@ def replay(
     name: str | None = None,
 ) -> Report:
     """Run `events` through a fresh store with these policies, and count hits."""
+    started = time.perf_counter()
     store = MemoryStore(clock=lambda: 0.0)
     tiers = TieredMemory(store, capacity=capacity, eviction=eviction, promotion=promotion)
     ids: dict[str, str] = {}
@@ -105,6 +110,8 @@ def replay(
         evicted=sum(r.tier == ARCHIVE for r in moves),
         paged_in=sum(r.reason == "paged in on use" for r in moves),
         peak_working=peak,
+        records=store.lsn,
+        seconds=round(time.perf_counter() - started, 4),
     )
 
 

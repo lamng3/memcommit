@@ -102,8 +102,8 @@ policy. A sanity check, not a benchmark on recorded agent traces.
 
 <div align="center">
 
-| Policy | Hit rate, cap 16 | cap 32 | cap 64 | Peak working memory (cap 32) |
-|:--|:--:|:--:|:--:|:--:|
+| Policy | Hit rate, cap 16 | cap 32 | cap 64 | Peak working memory | Log records | Replay ms |
+|:--|:--:|:--:|:--:|:--:|--:|--:|
 | FIFO | 0.506 | 0.551 | 0.602 | 32 |
 | LRU | 0.642 | 0.744 | 0.828 | 32 |
 | LFU | 0.354 | 0.460 | 0.606 | 32 |
@@ -115,11 +115,11 @@ policy. A sanity check, not a benchmark on recorded agent traces.
 | LRU + promote used (≥ 3 uses) | 0.869 | 0.894 | 0.924 | 121 |
 | Scored + promote important | 0.631 | 0.867 | 0.922 | 103 |
 
-<sub>`python examples/policy_benchmark.py --json …` · `results/policies/2026-10-16.json`</sub>
+<sub>Peak working memory, log records, and replay time at cap 32 · `python examples/policy_benchmark.py --json …` · `results/policies/2026-10-16.json`</sub>
 
 </div>
 
-A missed memory is paged back in on use. With working memory held to its
+Cost follows quality: every miss is a page-in and an eviction, both log records, so the policy with the best hit rate under the cap (the forgetting curve) also writes the fewest records, 19% fewer than FIFO. Promotion writes fewer still, because promoted memories stop churning, at the price of holding more. A missed memory is paged back in on use. With working memory held to its
 cap, the forgetting curve does best: it keeps what was used often or marked
 important, but lets even those fade. LFU and 2Q do poorly here, for one
 reason: this workload reuses fresh trace steps often, and both evict memories
