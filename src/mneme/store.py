@@ -13,7 +13,10 @@ observer. A transaction that raises writes nothing.
 
 A commit that brings a memory live also marks stale, in the same
 transaction, every memory built on a read (`query_ref`) whose result that
-memory changes. Memories written by the commit itself are left alone.
+memory changes. A commit that retracts a live memory marks stale everything
+built on it, directly or through a read whose result included it: work built
+on a premise that was withdrawn as wrong no longer holds. Memories written by
+the commit itself are left alone.
 
 Guards are the extension point for rules that must hold (scopes, provenance,
 a defender's checks); observers are the extension point for reactions
@@ -323,14 +326,24 @@ class MemoryStore:
     def _changed_reads(
         self, records: list[Record], statuses: dict[str, str | None], agent: str, lsn: int, now: float
     ) -> list[Record]:
-        """Stale records for memories derived from reads that `records` change by bringing a memory live."""
+        """Stale records for memories built on what `records` change.
+
+        A memory brought live changes the reads whose results now include it.
+        A live memory retracted changes those reads too, and withdraws itself
+        as a premise from everything derived from it.
+        """
         written = {r.memory.id for r in records}
         out: list[Record] = []
         for record in list(records):
-            if record.status != LIVE or self.state.is_live(record.memory.id):
+            was_live = self.state.is_live(record.memory.id)
+            if record.status == LIVE and not was_live:
+                refs = self.state.reads_of(record.memory)
+                reason = f"{record.memory.kind} {record.memory.key!r} changes a read this was built on"
+            elif record.op == "retract" and was_live:
+                refs = [record.memory.id, *self.state.reads_of(record.memory)]
+                reason = f"{record.memory.kind} {record.memory.key!r}, which this was built on, was retracted"
+            else:
                 continue
-            refs = self.state.reads_of(record.memory)
-            reason = f"{record.memory.kind} {record.memory.key!r} changes a read this was built on"
             for memory_id in self.state.dependents(refs):
                 if memory_id in written or statuses.get(memory_id, LIVE) != LIVE:
                     continue

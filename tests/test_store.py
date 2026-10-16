@@ -140,3 +140,19 @@ def test_a_memory_that_changes_a_read_makes_what_was_built_on_it_stale():
         again = tx.put("answer", "q", {"answer": "Ceramic (Ceramics)"}, derived_from=[read, match.id])
         tx.put("match", "Ceramic|Pottery", {"source": "Ceramic"})
     assert store.status(again.id) == LIVE
+
+
+def test_retracting_a_premise_stales_what_was_built_on_it():
+    store = MemoryStore()
+    fact = store.put("a", "fact", "x", {"v": 1})
+    direct = store.put("b", "answer", "direct", {}, derived_from=[fact.id])
+    by_read = store.put("b", "answer", "read", {}, derived_from=[query_ref("fact", "x")])
+    downstream = store.put("c", "report", "r", {}, derived_from=[direct.id])
+    unrelated = store.put("b", "answer", "other", {})
+    before = store.lsn
+    with store.transaction("a") as tx:
+        tx.retract(fact.id, "wrong")
+    assert [store.status(m.id) for m in (direct, by_read, downstream)] == ["stale"] * 3
+    assert store.status(unrelated.id) == "live"
+    store.rollback_to(before)
+    assert all(store.status(m.id) == "live" for m in (fact, direct, by_read, downstream))
