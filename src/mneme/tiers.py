@@ -26,6 +26,9 @@ so each agent's working memory is bounded on its own and shared memory has a
 bound of its own. With `auto=True` the tiers run `maintain()` after any
 commit that leaves a partition over capacity, through `store.defer`.
 
+A used memory that was archived is paged back into short-term memory
+(`page_in=True`, the default), the way MemGPT pages archived context back in.
+
 Use is counted by an `AccessLog`: a logical clock that ticks on every write
 and every `touch`. It is not in the log, because reads are many and cheap;
 `save` and `load` keep it across restarts, and without it a restarted store
@@ -115,6 +118,7 @@ class TieredMemory:
         partition: Callable[[Memory], str] = by_scope,
         access: AccessLog | None = None,
         auto: bool = True,
+        page_in: bool = True,
         agent: str = SYSTEM,
     ) -> None:
         self.store = store
@@ -127,6 +131,7 @@ class TieredMemory:
         self.partition = partition
         self.access = access or AccessLog()
         self.auto = auto
+        self.page_in = page_in
         self.agent = agent
         self._scheduled = False
         known = set(self.access.uses)
@@ -135,9 +140,19 @@ class TieredMemory:
 
     # Use -----------------------------------------------------------------
 
-    def touch(self, memory_ids: Iterable[str]) -> None:
-        """Count a use of each memory: an agent read it into its context."""
+    def touch(self, memory_ids: Iterable[str]) -> list[str]:
+        """Count a use of each memory: an agent read it into its context.
+
+        With `page_in`, a live archived memory that is used comes back to short-term memory, as a
+        page fault brings a page back; eviction then makes room. Returns the ids paged in.
+        """
+        memory_ids = list(memory_ids)
         self.access.touch(memory_ids)
+        if not self.page_in:
+            return []
+        state = self.store.state
+        faults = [m for m in memory_ids if state.tier.get(m) == ARCHIVE and state.is_live(m)]
+        return self.store.move(dict.fromkeys(faults), SHORT, "paged in on use", self.agent) if faults else []
 
     def candidate(self, memory_id: str) -> Candidate:
         state = self.store.state
@@ -212,8 +227,8 @@ class TieredMemory:
             self.store.defer(self._run)
 
     def _needs_work(self, commit: Commit) -> bool:
-        if commit.agent == self.agent:
-            return False  # our own moves and summaries
+        if commit.agent == self.agent and not any(r.reason == "paged in on use" for r in commit.records):
+            return False  # our own moves and summaries, except page-ins, which may need room
         if any(r.op == "put" and r.memory.kind == "trace_end" for r in commit.records) and self.compactor:
             return True
         return bool(self.over_capacity())

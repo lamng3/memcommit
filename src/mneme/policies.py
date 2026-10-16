@@ -18,6 +18,10 @@ Eviction (short-term over capacity -> archive):
   strength grows with each use and with importance (as in MemoryBank,
   Zhong et al., 2024).
 - `TTL`: memories past a time-to-live for their kind first, then a fallback policy.
+- `TwoQueue`: 2Q (Johnson and Shasha, 1994). Memories used only at their
+  write are evicted first, oldest first; memories used again, or paged back in
+  from the archive, are protected and leave least recently used. A scan of
+  one-off trace steps cannot flush what agents keep coming back to.
 
 Promotion (short-term -> long-term):
 
@@ -137,6 +141,15 @@ class TTL:
         expired = sorted((c for c in candidates if self.expired(c, now)), key=lambda c: c.written)[:n]
         rest = [c for c in candidates if not self.expired(c, now)]
         return expired + self.fallback.victims(rest, n - len(expired), now) if len(expired) < n else expired
+
+
+class TwoQueue:
+    """2Q: evict memories used once (FIFO) before memories used again (LRU)."""
+
+    def victims(self, candidates: Sequence[Candidate], n: int, now: int) -> list[Candidate]:
+        once = sorted((c for c in candidates if c.count <= 1), key=lambda c: c.written)
+        again = sorted((c for c in candidates if c.count > 1), key=lambda c: (c.last, c.written))
+        return (once + again)[:n]
 
 
 # Promotion -----------------------------------------------------------------

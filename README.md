@@ -61,7 +61,7 @@ database problem.
 - **Traces are first-class.** A run is a root and a tree of typed steps. Each step commits on its own, so a crash keeps what happened, and a handoff starts another agent's sub-trace.
 - **Provenance drives invalidation.** Every memory records what it was `derived_from`. When a premise goes bad, everything built on it goes stale, transitively, in one transaction, and the agents that built on it redo their work.
 - **Reads are provenance too.** A memory can derive from a read (`query_ref("note", topic=...)`), so work that saw "nothing known" is redone when something becomes known.
-- **Tiers with pluggable policies.** Short-term working memory is bounded per scope; eviction (LRU, LFU, FIFO, a forgetting curve, TTL by kind, or a recency-importance-frequency score) moves memories to the archive, promotion moves them to long-term, and compaction turns finished traces into long-term summaries. Every decision is a log record.
+- **Tiers with pluggable policies.** Short-term working memory is bounded per scope; eviction (LRU, LFU, FIFO, 2Q, a forgetting curve, TTL by kind, or a recency-importance-frequency score) moves memories to the archive, promotion moves them to long-term, and compaction turns finished traces into long-term summaries. Every decision is a log record.
 - **A log, not a table.** Status and tier are a fold over an append-only log, so any past state can be rebuilt, and rollback is compensation that keeps history.
 - **Built to be defended.** Memories are content-addressed, writes pass through guards, and audit tools (`verify`, `lineage`, `blast_radius`, `quarantine`, `provenance_guard`) give a defender exact repairs.
 
@@ -87,23 +87,27 @@ policy. A sanity check, not a benchmark on recorded agent traces.
 | Policy | Hit rate, cap 16 | cap 32 | cap 64 | Peak working memory (cap 32) |
 |:--|:--:|:--:|:--:|:--:|
 | FIFO | 0.506 | 0.551 | 0.602 | 32 |
-| LRU | 0.511 | 0.699 | 0.769 | 32 |
-| LFU | 0.278 | 0.451 | 0.581 | 32 |
-| Scored (recency, importance, frequency) | 0.314 | 0.506 | 0.824 | 32 |
-| Forgetting curve | **0.612** | **0.748** | **0.824** | 32 |
-| LRU + promote used (≥ 3 uses) | 0.775 | 0.828 | 0.892 | 96 |
-| Scored + promote important | 0.706 | 0.852 | 0.917 | 103 |
+| LRU | 0.642 | 0.744 | 0.828 | 32 |
+| LFU | 0.354 | 0.460 | 0.606 | 32 |
+| Scored (recency, importance, frequency) | 0.377 | 0.542 | 0.826 | 32 |
+| Forgetting curve | **0.648** | **0.771** | **0.867** | 32 |
+| 2Q | 0.381 | 0.481 | 0.606 | 32 |
+| LRU + promote used (≥ 3 uses) | 0.869 | 0.894 | 0.924 | 121 |
+| Scored + promote important | 0.631 | 0.867 | 0.922 | 103 |
 
 <sub>`python examples/policy_benchmark.py --json …` · `results/policies/2026-10-16.json`</sub>
 
 </div>
 
-With working memory held to its cap, the forgetting curve does best: it
-keeps what was used often or marked important, but lets even those fade. LFU
-does worst, because early memories pile up uses and never leave. Promotion
-raises the hit rate by moving memories to long-term, which grows what is
-held (peak 96 against a cap of 32); bound long-term with `long_capacity` to
-trade that back.
+A missed memory is paged back in on use. With working memory held to its
+cap, the forgetting curve does best: it keeps what was used often or marked
+important, but lets even those fade. LFU and 2Q do poorly here, for one
+reason: this workload reuses fresh trace steps often, and both evict memories
+used only once first, which is exactly what a fresh step is. Promotion raises
+the hit rate by moving memories to long-term, which grows what is held (peak
+121 against a cap of 32); bound long-term with `long_capacity` to trade that
+back. Which policy wins depends on the workload, which is why policies are
+pluggable and the benchmark replays any workload.
 
 ## 🔧 Usage
 
@@ -186,7 +190,7 @@ tiers = TieredMemory(
     compactor=Compactor(store, policy=FinishedTraces(keep_recent=5), summarizer=my_llm_summary),
     long_capacity=10_000,
 )
-tiers.touch([m.id for m in context])   # count a use
+tiers.touch([m.id for m in context])   # count a use; archived memories are paged back in
 tiers.working(scopes=["shared", "planner"])
 tiers.maintain()                       # runs on its own after a commit leaves a partition over capacity
 ```

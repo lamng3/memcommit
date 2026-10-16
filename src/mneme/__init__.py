@@ -31,6 +31,7 @@ from .policies import (
     Never,
     PromotionPolicy,
     Scored,
+    TwoQueue,
 )
 from .recall import Hit, LexicalIndex, Recall, VectorIndex
 from .records import (
@@ -117,6 +118,7 @@ __all__ = [
     "TieredMemory",
     "Trace",
     "Transaction",
+    "TwoQueue",
     "VectorIndex",
     "blast_radius",
     "chain_digest",

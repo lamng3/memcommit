@@ -15,7 +15,7 @@ This is the feature list. `docs/design.md` explains why; this file says what is 
 - **Guards, observers, deferred work.** Guards reject before the commit; observers react after it; `defer` runs work that writes once the commit is done.
 - **Traces.** `trace(...)` / `Trace`: a root and a tree of typed steps, each committed on its own; handoffs start sub-traces; `Trace.open(...).to_json()`.
 - **Tiers.** `short`, `long`, `archive`. `TieredMemory` bounds short-term memory per partition and runs maintenance after commits.
-- **Policies.** Eviction: `FIFO`, `LRU`, `LFU`, `Scored`, `Forgetting` (Ebbinghaus curve), `TTL` by kind. Promotion: `AccessCount`, `ImportanceAtLeast`, `KindIn`, `AnyOf`, `AllOf`, `Never`. `AccessLog` on a logical clock, saved and loaded.
+- **Policies.** Eviction: `FIFO`, `LRU`, `LFU`, `Scored`, `Forgetting` (Ebbinghaus curve), `TTL` by kind, `TwoQueue` (2Q). A used archived memory is paged back into short-term memory. Promotion: `AccessCount`, `ImportanceAtLeast`, `KindIn`, `AnyOf`, `AllOf`, `Never`. `AccessLog` on a logical clock, saved and loaded.
 - **Compaction.** `Compactor` turns finished traces into long-term summaries and archives their steps; `outline` summarizer; `FinishedTraces` policy.
 - **Recall.** `Recall` scores relevance, recency, and importance; `LexicalIndex` (BM25) and `VectorIndex` (any embedder), kept in step by `CacheSync`.
 - **Sessions and scopes.** `AgentSession` reads `shared` plus the agent's scopes; `scope_guard`.
@@ -32,7 +32,7 @@ In order:
 | Feature | What it adds |
 |---|---|
 | Policy benchmark on recorded traces | `mneme.bench` replays synthetic workloads now; replay recorded multi-agent traces, where a use is a memory an agent actually recalled. |
-| More eviction policies | 2Q and ARC, which need ghost lists: a policy hook for state kept between decisions. |
+| More eviction policies | ARC, which adapts the split between once-used and reused memories; a policy hook for state kept between decisions. |
 | More compaction policies | Compact by age or by working-memory pressure; merge summaries of similar tasks; keep failed traces whole longer. |
 | Mid-term tier | Optional tier between short and long (MemoryOS's segments): traces grouped by topic before they are summarized. |
 | Learned policies | A model that scores candidates for eviction and promotion, trained on which memories agents later recalled. |

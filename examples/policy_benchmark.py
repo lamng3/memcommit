@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))  # run from a clone without installing
 
-from mneme import FIFO, LFU, LRU, AccessCount, Forgetting, ImportanceAtLeast, Scored
+from mneme import FIFO, LFU, LRU, AccessCount, Forgetting, ImportanceAtLeast, Scored, TwoQueue
 from mneme.bench import compare, synthetic
 
 POLICIES = {
@@ -21,6 +21,7 @@ POLICIES = {
     "LFU": lambda: (LFU(), None),
     "Scored": lambda: (Scored(), None),
     "Forgetting": lambda: (Forgetting(), None),
+    "2Q": lambda: (TwoQueue(), None),
     "LRU + promote used": lambda: (LRU(), AccessCount(3)),
     "Scored + promote important": lambda: (Scored(), ImportanceAtLeast(0.8)),
 }

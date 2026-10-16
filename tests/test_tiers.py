@@ -26,6 +26,7 @@ from mneme import (
     Scored,
     TieredMemory,
     Trace,
+    TwoQueue,
     trace,
 )
 
@@ -181,7 +182,19 @@ def test_the_benchmark_replays_a_workload_through_the_real_store():
     fifo = replay(events, FIFO(), capacity=2)
     assert (lru.uses, lru.hits) == (3, 2)  # b was least recently used when c arrived
     assert (fifo.uses, fifo.hits) == (3, 2)  # a was oldest, so its second use missed instead
-    assert lru.evicted == 1 and lru.peak_working == 2
+    assert (lru.evicted, lru.paged_in, lru.peak_working) == (2, 1, 2)  # b came back, and made room
     assert synthetic(seed=1) == synthetic(seed=1)
     reports = compare(synthetic(tasks=8, seed=1), {"LRU": lambda: (LRU(), None)}, [4, 8])
     assert [r.capacity for r in reports] == [4, 8] and reports[0].hit_rate <= reports[1].hit_rate
+
+
+def test_an_archived_memory_used_again_is_paged_back_in():
+    store = MemoryStore()
+    tiers = TieredMemory(store, capacity=2, eviction=TwoQueue())
+    a, b = store.put("x", "note", "a"), store.put("x", "note", "b")
+    tiers.touch([b.id])  # b is used again: protected
+    store.put("x", "note", "c")
+    assert store.tier(a.id) == ARCHIVE  # used once, oldest: the first to go
+    assert tiers.touch([a.id]) == [a.id] and store.tier(a.id) == SHORT
+    assert len(tiers.working()) == 2  # paging a in made room by evicting another
+    assert TieredMemory(MemoryStore(), page_in=False).touch(["m:x"]) == []

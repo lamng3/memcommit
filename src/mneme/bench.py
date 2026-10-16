@@ -9,7 +9,8 @@ A workload is a list of events:
 from the policies under test. A use is a **hit** when the memory is in working
 memory (short- or long-term) at that moment, and a **miss** when it has been
 evicted to the archive and would have to be searched for. The report also
-gives promotions, evictions, and the largest working memory seen.
+gives promotions, evictions, page-ins, and the largest working memory seen.
+A missed memory is paged back in on use, as a cache would refill a line.
 
 `synthetic` makes a workload with the shape agent runs have: tasks that write
 bursts of trace steps, a few of which matter, then later tasks that reuse
@@ -54,6 +55,7 @@ class Report:
     hits: int
     promoted: int
     evicted: int
+    paged_in: int
     peak_working: int
 
     @property
@@ -99,6 +101,7 @@ def replay(
         hits,
         promoted=sum(r.tier == "long" for r in moves),
         evicted=sum(r.tier == ARCHIVE for r in moves),
+        paged_in=sum(r.reason == "paged in on use" for r in moves),
         peak_working=peak,
     )
 
