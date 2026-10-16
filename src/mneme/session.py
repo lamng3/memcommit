@@ -1,7 +1,7 @@
 """Agent sessions: one agent's view of the store, and the rule for who may write where.
 
 A memory's scope says who may read it. `shared` is for every agent; a scope
-named after an agent (`kroma.matcher`) or under it (`kroma.matcher/drafts`) is
+named after an agent (`planner`) or under it (`planner/drafts`) is
 that agent's own. An `AgentSession` reads `shared` plus the agent's own
 scopes, and every write it makes is stamped with the agent's name.
 
@@ -12,12 +12,13 @@ or not: an agent may put memories only in `shared` or in its own scopes.
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from typing import Any
 
 from .records import SHARED, Commit, Memory
 from .state import State
 from .store import SYSTEM, MemoryStore, Transaction
+from .traces import Trace, trace
 
 
 def owns(agent: str, scope: str) -> bool:
@@ -60,6 +61,10 @@ class AgentSession:
 
     def put(self, kind: str, key: str, body: Any = None, **kwargs: Any) -> Memory:
         return self.store.put(self.agent, kind, key, body, **kwargs)
+
+    def trace(self, task: str, **options: Any) -> AbstractContextManager[Trace]:
+        """A run of this agent, as a block. See `mneme.traces.trace`."""
+        return trace(self.store, self.agent, task, **options)
 
 
 def attach_scope_guard(store: MemoryStore) -> MemoryStore:
