@@ -1,0 +1,216 @@
+{
+  "seed": 0,
+  "workload": "synthetic",
+  "reports": [
+    {
+      "policy": "FIFO",
+      "capacity": 16,
+      "uses": 472,
+      "hits": 239,
+      "promoted": 0,
+      "evicted": 344,
+      "peak_working": 16,
+      "hit_rate": 0.5064
+    },
+    {
+      "policy": "LRU",
+      "capacity": 16,
+      "uses": 472,
+      "hits": 241,
+      "promoted": 0,
+      "evicted": 344,
+      "peak_working": 16,
+      "hit_rate": 0.5106
+    },
+    {
+      "policy": "LFU",
+      "capacity": 16,
+      "uses": 472,
+      "hits": 131,
+      "promoted": 0,
+      "evicted": 344,
+      "peak_working": 16,
+      "hit_rate": 0.2775
+    },
+    {
+      "policy": "Scored",
+      "capacity": 16,
+      "uses": 472,
+      "hits": 148,
+      "promoted": 0,
+      "evicted": 344,
+      "peak_working": 16,
+      "hit_rate": 0.3136
+    },
+    {
+      "policy": "Forgetting",
+      "capacity": 16,
+      "uses": 472,
+      "hits": 289,
+      "promoted": 0,
+      "evicted": 344,
+      "peak_working": 16,
+      "hit_rate": 0.6123
+    },
+    {
+      "policy": "LRU + promote used",
+      "capacity": 16,
+      "uses": 472,
+      "hits": 366,
+      "promoted": 63,
+      "evicted": 283,
+      "peak_working": 77,
+      "hit_rate": 0.7754
+    },
+    {
+      "policy": "Scored + promote important",
+      "capacity": 16,
+      "uses": 472,
+      "hits": 333,
+      "promoted": 71,
+      "evicted": 273,
+      "peak_working": 87,
+      "hit_rate": 0.7055
+    },
+    {
+      "policy": "FIFO",
+      "capacity": 32,
+      "uses": 472,
+      "hits": 260,
+      "promoted": 0,
+      "evicted": 328,
+      "peak_working": 32,
+      "hit_rate": 0.5508
+    },
+    {
+      "policy": "LRU",
+      "capacity": 32,
+      "uses": 472,
+      "hits": 330,
+      "promoted": 0,
+      "evicted": 328,
+      "peak_working": 32,
+      "hit_rate": 0.6992
+    },
+    {
+      "policy": "LFU",
+      "capacity": 32,
+      "uses": 472,
+      "hits": 213,
+      "promoted": 0,
+      "evicted": 328,
+      "peak_working": 32,
+      "hit_rate": 0.4513
+    },
+    {
+      "policy": "Scored",
+      "capacity": 32,
+      "uses": 472,
+      "hits": 239,
+      "promoted": 0,
+      "evicted": 328,
+      "peak_working": 32,
+      "hit_rate": 0.5064
+    },
+    {
+      "policy": "Forgetting",
+      "capacity": 32,
+      "uses": 472,
+      "hits": 353,
+      "promoted": 0,
+      "evicted": 328,
+      "peak_working": 32,
+      "hit_rate": 0.7479
+    },
+    {
+      "policy": "LRU + promote used",
+      "capacity": 32,
+      "uses": 472,
+      "hits": 391,
+      "promoted": 66,
+      "evicted": 264,
+      "peak_working": 96,
+      "hit_rate": 0.8284
+    },
+    {
+      "policy": "Scored + promote important",
+      "capacity": 32,
+      "uses": 472,
+      "hits": 402,
+      "promoted": 71,
+      "evicted": 257,
+      "peak_working": 103,
+      "hit_rate": 0.8517
+    },
+    {
+      "policy": "FIFO",
+      "capacity": 64,
+      "uses": 472,
+      "hits": 284,
+      "promoted": 0,
+      "evicted": 296,
+      "peak_working": 64,
+      "hit_rate": 0.6017
+    },
+    {
+      "policy": "LRU",
+      "capacity": 64,
+      "uses": 472,
+      "hits": 363,
+      "promoted": 0,
+      "evicted": 296,
+      "peak_working": 64,
+      "hit_rate": 0.7691
+    },
+    {
+      "policy": "LFU",
+      "capacity": 64,
+      "uses": 472,
+      "hits": 274,
+      "promoted": 0,
+      "evicted": 296,
+      "peak_working": 64,
+      "hit_rate": 0.5805
+    },
+    {
+      "policy": "Scored",
+      "capacity": 64,
+      "uses": 472,
+      "hits": 389,
+      "promoted": 0,
+      "evicted": 296,
+      "peak_working": 64,
+      "hit_rate": 0.8242
+    },
+    {
+      "policy": "Forgetting",
+      "capacity": 64,
+      "uses": 472,
+      "hits": 389,
+      "promoted": 0,
+      "evicted": 296,
+      "peak_working": 64,
+      "hit_rate": 0.8242
+    },
+    {
+      "policy": "LRU + promote used",
+      "capacity": 64,
+      "uses": 472,
+      "hits": 421,
+      "promoted": 73,
+      "evicted": 225,
+      "peak_working": 135,
+      "hit_rate": 0.8919
+    },
+    {
+      "policy": "Scored + promote important",
+      "capacity": 64,
+      "uses": 472,
+      "hits": 433,
+      "promoted": 71,
+      "evicted": 225,
+      "peak_working": 135,
+      "hit_rate": 0.9174
+    }
+  ]
+}

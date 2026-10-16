@@ -9,7 +9,7 @@
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC%20BY%204.0-green.svg)](https://creativecommons.org/licenses/by/4.0/)
 [![Design](https://img.shields.io/badge/docs-design-8b5cf6)](docs/design.md)
 
-[⚡ Quick start](#-quick-start) · [✨ What it is](#-what-it-is) · [🔧 Usage](#-usage) · [🧭 Roadmap](#-roadmap) · [📝 Citation](#-citation)
+[⚡ Quick start](#-quick-start) · [✨ What it is](#-what-it-is) · [📊 Results](#-results) · [🔧 Usage](#-usage) · [🧭 Roadmap](#-roadmap) · [📝 Citation](#-citation)
 
 </div>
 
@@ -74,6 +74,36 @@ database problem.
 | `archive` | Everything evicted or compacted; searched on request | Never deleted: the log is append-only |
 
 </div>
+
+## 📊 Results
+
+How often is a memory an agent needs still in working memory? A synthetic,
+agent-shaped workload (60 tasks writing 6 trace steps each, then 472 skewed
+reuses of earlier memories) replayed through the real store under each
+policy. A sanity check, not a benchmark on recorded agent traces.
+
+<div align="center">
+
+| Policy | Hit rate, cap 16 | cap 32 | cap 64 | Peak working memory (cap 32) |
+|:--|:--:|:--:|:--:|:--:|
+| FIFO | 0.506 | 0.551 | 0.602 | 32 |
+| LRU | 0.511 | 0.699 | 0.769 | 32 |
+| LFU | 0.278 | 0.451 | 0.581 | 32 |
+| Scored (recency, importance, frequency) | 0.314 | 0.506 | 0.824 | 32 |
+| Forgetting curve | **0.612** | **0.748** | **0.824** | 32 |
+| LRU + promote used (≥ 3 uses) | 0.775 | 0.828 | 0.892 | 96 |
+| Scored + promote important | 0.706 | 0.852 | 0.917 | 103 |
+
+<sub>`python examples/policy_benchmark.py --json …` · `results/policies/2026-10-16.json`</sub>
+
+</div>
+
+With working memory held to its cap, the forgetting curve does best: it
+keeps what was used often or marked important, but lets even those fade. LFU
+does worst, because early memories pile up uses and never leave. Promotion
+raises the hit rate by moving memories to long-term, which grows what is
+held (peak 96 against a cap of 32); bound long-term with `long_capacity` to
+trade that back.
 
 ## 🔧 Usage
 

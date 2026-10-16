@@ -171,3 +171,17 @@ def test_forgetting_and_ttl_policies():
     assert Forgetting().retention(cs[2], 10) > Forgetting().retention(cs[1], 10)
     assert keys(TTL({"note": 7}), 2) == ["old", "cold"]  # written at ticks 1 and 2: expired
     assert keys(TTL({"other": 1}, fallback=FIFO())) == ["old"]  # nothing expired: the fallback decides
+
+
+def test_the_benchmark_replays_a_workload_through_the_real_store():
+    from mneme.bench import Use, Write, compare, replay, synthetic
+
+    events = [Write("a"), Write("b"), Use("a"), Write("c"), Use("a"), Use("b")]
+    lru = replay(events, LRU(), capacity=2)
+    fifo = replay(events, FIFO(), capacity=2)
+    assert (lru.uses, lru.hits) == (3, 2)  # b was least recently used when c arrived
+    assert (fifo.uses, fifo.hits) == (3, 2)  # a was oldest, so its second use missed instead
+    assert lru.evicted == 1 and lru.peak_working == 2
+    assert synthetic(seed=1) == synthetic(seed=1)
+    reports = compare(synthetic(tasks=8, seed=1), {"LRU": lambda: (LRU(), None)}, [4, 8])
+    assert [r.capacity for r in reports] == [4, 8] and reports[0].hit_rate <= reports[1].hit_rate

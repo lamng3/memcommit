@@ -22,6 +22,7 @@ This is the feature list. `docs/design.md` explains why; this file says what is 
 - **Blackboard.** Agents consume kinds; results and a receipt commit together; exactly once across restarts; redo on invalidation; failures written as `error` memories.
 - **Audit.** `verify`, `lineage`, `blast_radius`, `quarantine`, `diff`, `provenance_guard`; `seal` writes a hash chain over the log that `verify` rechecks, so deleted or reordered records are caught.
 - **Engines.** `MemoryEngine`, `JsonlEngine`, `SqliteEngine`; `mneme.open(path)`.
+- **Benchmark.** `mneme.bench`: replay writes and uses through the real store under any policies; `synthetic` agent-shaped workloads; `examples/policy_benchmark.py` writes `results/policies/`.
 - **Example.** `examples/shared_memory.py`: two agents, traces, tiers, compaction, recall, a late read, a poisoned tool, quarantine, and recovery.
 
 ## Building
@@ -30,7 +31,7 @@ In order:
 
 | Feature | What it adds |
 |---|---|
-| Policy benchmark | Replay recorded agent traces against each eviction and promotion policy; report hit rate of recall against what agents actually used, and working-memory size. |
+| Policy benchmark on recorded traces | `mneme.bench` replays synthetic workloads now; replay recorded multi-agent traces, where a use is a memory an agent actually recalled. |
 | More eviction policies | 2Q and ARC, which need ghost lists: a policy hook for state kept between decisions. |
 | More compaction policies | Compact by age or by working-memory pressure; merge summaries of similar tasks; keep failed traces whole longer. |
 | Mid-term tier | Optional tier between short and long (MemoryOS's segments): traces grouped by topic before they are summarized. |
