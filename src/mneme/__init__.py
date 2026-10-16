@@ -10,7 +10,7 @@ with mneme.trace(store, "planner", "book a trip") as t:
 from pathlib import Path
 from typing import Any
 
-from .audit import blast_radius, diff, lineage, provenance_guard, quarantine, verify
+from .audit import SEAL, blast_radius, chain_digest, diff, lineage, provenance_guard, quarantine, seal, verify
 from .blackboard import ERROR, RECEIPT, Agent, Blackboard, Step
 from .cache import Cache, CacheSync, DictCache
 from .compaction import SUMMARY, CompactionPolicy, Compactor, FinishedTraces, outline
@@ -19,11 +19,13 @@ from .policies import (
     FIFO,
     LFU,
     LRU,
+    TTL,
     AccessCount,
     AllOf,
     AnyOf,
     Candidate,
     EvictionPolicy,
+    Forgetting,
     ImportanceAtLeast,
     KindIn,
     Never,
@@ -69,11 +71,13 @@ __all__ = [
     "LRU",
     "RECEIPT",
     "RETRACTED",
+    "SEAL",
     "SHARED",
     "SHORT",
     "STALE",
     "SUMMARY",
     "SYSTEM",
+    "TTL",
     "AccessCount",
     "AccessLog",
     "Agent",
@@ -91,6 +95,7 @@ __all__ = [
     "Engine",
     "EvictionPolicy",
     "FinishedTraces",
+    "Forgetting",
     "Hit",
     "ImportanceAtLeast",
     "JsonlEngine",
@@ -114,6 +119,7 @@ __all__ = [
     "Transaction",
     "VectorIndex",
     "blast_radius",
+    "chain_digest",
     "diff",
     "lineage",
     "open",
@@ -123,6 +129,7 @@ __all__ = [
     "quarantine",
     "query_ref",
     "scope_guard",
+    "seal",
     "trace",
     "verify",
 ]

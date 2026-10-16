@@ -9,6 +9,7 @@ from mneme import (
     RETRACTED,
     SHORT,
     STALE,
+    TTL,
     AccessCount,
     AccessLog,
     AllOf,
@@ -16,6 +17,7 @@ from mneme import (
     Candidate,
     Compactor,
     FinishedTraces,
+    Forgetting,
     ImportanceAtLeast,
     JsonlEngine,
     KindIn,
@@ -160,3 +162,12 @@ def test_tier_decisions_replay_from_the_log(tmp_path):
     store.put("x", "note", "b")
     again = MemoryStore(JsonlEngine(tmp_path / "log.jsonl"))
     assert again.tier(first.id) == ARCHIVE
+
+
+def test_forgetting_and_ttl_policies():
+    cs = candidates()
+    keys = lambda policy, n=1: [c.memory.key for c in policy.victims(cs, n, now=10)]  # noqa: E731
+    assert keys(Forgetting()) == ["cold"]  # used once, long ago
+    assert Forgetting().retention(cs[2], 10) > Forgetting().retention(cs[1], 10)
+    assert keys(TTL({"note": 7}), 2) == ["old", "cold"]  # written at ticks 1 and 2: expired
+    assert keys(TTL({"other": 1}, fallback=FIFO())) == ["old"]  # nothing expired: the fallback decides

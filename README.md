@@ -61,7 +61,7 @@ database problem.
 - **Traces are first-class.** A run is a root and a tree of typed steps. Each step commits on its own, so a crash keeps what happened, and a handoff starts another agent's sub-trace.
 - **Provenance drives invalidation.** Every memory records what it was `derived_from`. When a premise goes bad, everything built on it goes stale, transitively, in one transaction, and the agents that built on it redo their work.
 - **Reads are provenance too.** A memory can derive from a read (`query_ref("note", topic=...)`), so work that saw "nothing known" is redone when something becomes known.
-- **Tiers with pluggable policies.** Short-term working memory is bounded per scope; eviction (LRU, LFU, FIFO, or a recency-importance-frequency score) moves memories to the archive, promotion moves them to long-term, and compaction turns finished traces into long-term summaries. Every decision is a log record.
+- **Tiers with pluggable policies.** Short-term working memory is bounded per scope; eviction (LRU, LFU, FIFO, a forgetting curve, TTL by kind, or a recency-importance-frequency score) moves memories to the archive, promotion moves them to long-term, and compaction turns finished traces into long-term summaries. Every decision is a log record.
 - **A log, not a table.** Status and tier are a fold over an append-only log, so any past state can be rebuilt, and rollback is compensation that keeps history.
 - **Built to be defended.** Memories are content-addressed, writes pass through guards, and audit tools (`verify`, `lineage`, `blast_radius`, `quarantine`, `provenance_guard`) give a defender exact repairs.
 
@@ -146,7 +146,7 @@ with status `error`. Step kinds are open; `thought`, `action`, `observation`,
 <summary><b>Tiers, policies, and compaction</b></summary>
 
 ```python
-from mneme import FIFO, LFU, Scored, AnyOf, ImportanceAtLeast, KindIn, FinishedTraces
+from mneme import FIFO, LFU, TTL, Forgetting, Scored, AnyOf, ImportanceAtLeast, KindIn, FinishedTraces
 
 tiers = TieredMemory(
     store,
@@ -202,6 +202,7 @@ agent writes nothing but an `error` memory in its own scope.
 | `quarantine(store, ids, reason)` | Retracts suspects and marks what was built on them stale, in one transaction |
 | `diff(store, a, b)` | Memories whose status or tier changed between two LSNs |
 | `provenance_guard()` | Rejects at write time a memory built on a memory that is missing or no longer holds |
+| `seal(store)` | Writes a hash chain over the log; `verify` rechecks it, so a deleted or reordered record is caught |
 | `scope_guard` | An agent writes only to `shared` or its own scopes |
 
 </details>

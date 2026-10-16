@@ -20,6 +20,7 @@ from mneme import (
     open,
     provenance_guard,
     quarantine,
+    seal,
     verify,
 )
 
@@ -113,3 +114,13 @@ def test_sqlite_and_open_pick_engines_by_suffix(tmp_path):
     assert again.get(fact.id) == Memory("fact", "f", {"x": 1}, source="a")
     with pytest.raises(ValueError, match="no engine"):
         open(tmp_path / "memory.txt")
+
+
+def test_a_seal_catches_a_deleted_record():
+    store = MemoryStore()
+    store.put("a", "fact", "one")
+    store.put("a", "fact", "two")
+    sealed = seal(store)
+    assert verify(store) == [] and sealed.body["lsn"] == 2 and store.tier(sealed.id) == ARCHIVE
+    del store.engine._records[1]  # an attacker drops a record from the log
+    assert any("no longer matches its seal" in p for p in verify(store))

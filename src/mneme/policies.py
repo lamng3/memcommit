@@ -14,6 +14,10 @@ Eviction (short-term over capacity -> archive):
 - `LFU`: least often used first, ties by recency.
 - `Scored`: lowest weighted sum of recency, importance, and frequency first,
   the retrieval score of Generative Agents (Park et al., 2023) used in reverse.
+- `Forgetting`: lowest retention first, on an Ebbinghaus forgetting curve whose
+  strength grows with each use and with importance (as in MemoryBank,
+  Zhong et al., 2024).
+- `TTL`: memories past a time-to-live for their kind first, then a fallback policy.
 
 Promotion (short-term -> long-term):
 
@@ -102,6 +106,37 @@ class Scored:
 
     def victims(self, candidates: Sequence[Candidate], n: int, now: int) -> list[Candidate]:
         return sorted(candidates, key=lambda c: (self.score(c, now), c.written))[:n]
+
+
+@dataclass(frozen=True)
+class Forgetting:
+    """Evict the lowest retention `exp(-age / strength)` first; strength = base * uses * (1 + importance)."""
+
+    base: float = 10.0
+
+    def retention(self, c: Candidate, now: int) -> float:
+        strength = self.base * max(1, c.count) * (1.0 + c.importance)
+        return math.exp(-max(0, now - c.last) / strength)
+
+    def victims(self, candidates: Sequence[Candidate], n: int, now: int) -> list[Candidate]:
+        return sorted(candidates, key=lambda c: (self.retention(c, now), c.written))[:n]
+
+
+class TTL:
+    """Evict memories older than their kind's time-to-live (in ticks since written) first, then by `fallback`."""
+
+    def __init__(self, ttl: dict[str, int], fallback: EvictionPolicy | None = None) -> None:
+        self.ttl = dict(ttl)
+        self.fallback = fallback or LRU()
+
+    def expired(self, c: Candidate, now: int) -> bool:
+        limit = self.ttl.get(c.memory.kind)
+        return limit is not None and now - c.written > limit
+
+    def victims(self, candidates: Sequence[Candidate], n: int, now: int) -> list[Candidate]:
+        expired = sorted((c for c in candidates if self.expired(c, now)), key=lambda c: c.written)[:n]
+        rest = [c for c in candidates if not self.expired(c, now)]
+        return expired + self.fallback.victims(rest, n - len(expired), now) if len(expired) < n else expired
 
 
 # Promotion -----------------------------------------------------------------

@@ -18,6 +18,9 @@ This module gives a defender the tools that design makes possible.
 - `diff(store, a, b)`: which memories changed status or tier between two LSNs.
 - `provenance_guard`: reject, at write time, a memory derived from a memory
   that does not exist or no longer holds: forged or stale provenance.
+- `seal(store)`: write a `seal` memory holding a hash chain over the log up to
+  now. `verify` recomputes every seal, so a record deleted, reordered, or
+  altered before a seal is caught even when the attacker rewrote the body's id.
 
 None of these decide what is malicious. That is the defender's job; these
 make its decisions cheap and its repairs exact.
@@ -25,10 +28,11 @@ make its decisions cheap and its repairs exact.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+import hashlib
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
-from .records import LIVE, SHARED, Commit, Memory, Record
+from .records import ARCHIVE, LIVE, SHARED, Commit, Memory, Record, canonical
 from .state import State
 from .store import SYSTEM, MemoryStore
 
@@ -37,12 +41,37 @@ def _owns(agent: str, scope: str) -> bool:
     return scope == agent or scope.startswith(agent + "/")
 
 
+SEAL = "seal"
+
+
+def chain_digest(records: Sequence[Record], until: int) -> str:
+    """A hash chain over every record up to LSN `until`: each link hashes the last one and the record."""
+    digest = ""
+    for record in records:
+        if record.lsn > until:
+            break
+        digest = hashlib.sha256((digest + canonical(record.to_json())).encode()).hexdigest()
+    return digest
+
+
+def seal(store: MemoryStore, agent: str = SYSTEM) -> Memory:
+    """Write a seal over the log as it is now. Seals go to the archive: they are for auditors, not agents."""
+    lsn = store.lsn
+    body = {"lsn": lsn, "digest": chain_digest(store.engine.records(), lsn)}
+    return store.put(agent, SEAL, f"lsn:{lsn}", body, tier=ARCHIVE)
+
+
 def verify(store: MemoryStore, scopes: bool = True) -> list[str]:
     """Problems in the log, in log order. An empty list means the log is consistent."""
     problems: list[str] = []
     seen: set[str] = set()
     last_lsn, last_txn = 0, 0
-    for record in store.engine.records():
+    records = store.engine.records()
+    for record in records:
+        if record.op == "put" and record.memory.kind == SEAL and record.agent == SYSTEM:
+            body = record.memory.body
+            if chain_digest(records, body["lsn"]) != body["digest"]:
+                problems.append(f"lsn {record.lsn}: the log up to lsn {body['lsn']} no longer matches its seal")
         m = record.memory
         where = f"lsn {record.lsn}"
         if record.lsn <= last_lsn:
