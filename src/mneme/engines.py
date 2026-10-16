@@ -8,16 +8,18 @@ or agents; the store rebuilds those by replay.
 - `JsonlEngine`: one JSON line per transaction, flushed and fsynced before
   `append` returns. A torn final line (a crash mid-write) is dropped on read,
   the way a database drops a torn final log record.
-- `OntoDBEngine` (integrations/ontodb.py): each transaction is one OntoDB
-  transaction, and memories are RDF a SPARQL query can read.
+- `SqliteEngine`: one SQLite transaction per commit, in a single file, with
+  WAL journaling. Standard library only.
 
-A new engine registers itself in `ENGINES`.
+A new engine (a document store, a graph database, a service) subclasses
+`Engine` and registers itself in `ENGINES`; `open` picks one by file suffix.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import sqlite3
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -96,3 +98,39 @@ class JsonlEngine(Engine):
                 raise
             out.extend(Record.from_json(r) for r in batch)
         return out
+
+
+@register("sqlite")
+class SqliteEngine(Engine):
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._db = sqlite3.connect(self.path)
+        self._db.execute("PRAGMA journal_mode=WAL")
+        self._db.execute("PRAGMA synchronous=FULL")
+        self._db.execute("CREATE TABLE IF NOT EXISTS records (lsn INTEGER PRIMARY KEY, txn INTEGER, record TEXT)")
+        self._db.commit()
+
+    def append(self, records: Sequence[Record]) -> None:
+        with self._db:  # one SQLite transaction: all rows or none
+            self._db.executemany(
+                "INSERT INTO records (lsn, txn, record) VALUES (?, ?, ?)",
+                [(r.lsn, r.txn, canonical(r.to_json())) for r in records],
+            )
+
+    def records(self) -> list[Record]:
+        rows = self._db.execute("SELECT record FROM records ORDER BY lsn")
+        return [Record.from_json(json.loads(row[0])) for row in rows]
+
+    def close(self) -> None:
+        self._db.close()
+
+
+def open_engine(path: str | Path) -> Engine:
+    """An engine for `path` by suffix: .jsonl is JSONL, .db/.sqlite/.sqlite3 is SQLite."""
+    suffix = Path(path).suffix.lower()
+    if suffix == ".jsonl":
+        return JsonlEngine(path)
+    if suffix in (".db", ".sqlite", ".sqlite3"):
+        return SqliteEngine(path)
+    raise ValueError(f"no engine for {str(path)!r}; use a .jsonl or .db path, or pass an Engine")
