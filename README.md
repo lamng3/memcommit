@@ -115,7 +115,7 @@ policy. A sanity check, not a benchmark on recorded agent traces.
 | LRU + promote used (≥ 3 uses) | 0.869 | 0.894 | 0.924 | 121 | 790 | 51 |
 | Scored + promote important | 0.631 | 0.867 | 0.922 | 103 | 814 | 62 |
 
-<sub>Peak working memory, log records, and replay time at cap 32 · `python examples/policy_benchmark.py --json …` · `results/policies/2026-10-16.json`</sub>
+<sub>Peak working memory, log records, and replay time at cap 32 · `python examples/policy_benchmark.py` · all tables per capacity in [`results/README.md`](results/README.md), raw reports in `results/policies/`</sub>
 
 </div>
 
