@@ -18,8 +18,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))  # run from a clone without installing
 
-import mneme  # noqa: E402
-from mneme import (  # noqa: E402
+import mneme
+from mneme import (
     LRU,
     AccessCount,
     Blackboard,
@@ -29,8 +29,8 @@ from mneme import (  # noqa: E402
     Trace,
     blast_radius,
     provenance_guard,
-    query_ref,
     quarantine,
+    query_ref,
     scope_guard,
     verify,
 )
