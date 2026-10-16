@@ -94,6 +94,8 @@ writes a `message` step and starts the other agent's trace derived from it.
 
 ## Tiers and policies
 
+(The cache view of the same machinery is below, under "Short-term memory is a cache".)
+
 Short-term memory is bounded per partition (a scope, by default), so each
 agent's working memory and shared memory have their own room. When a commit
 leaves a partition over capacity, `TieredMemory` runs `maintain()` through
@@ -148,8 +150,61 @@ and `provenance_guard` rejects forged or stale premises at write time. A
 defender that also detects (re-checking answers, watching scores) plugs in as
 an observer or a guard.
 
-## Open questions
+## The database underneath
 
-- **Ordering on the blackboard.** The queue is FIFO, so work can run before work that would change its result and then run again. Reads make that correct; a dependency-aware order would make it cheaper.
-- **Access counts and the log.** Reads are not logged, so a policy's inputs cannot be replayed exactly after a restart without the saved `AccessLog`. Logging sampled reads is one option.
-- **Read references and scopes.** A `find:` reference does not record the reader's scopes, so a memory the reader could not see can still invalidate its work. That over-invalidates, which is safe.
+Mneme is a log-structured store, and it borrows a database's answers to a
+database's problems.
+
+**Two levels of compaction.** Memory compaction decides what agents see:
+finished traces fold into summaries, cold mid-term segments consolidate,
+summaries of the same task merge. It never deletes; it moves memories to the
+archive. Log compaction decides what the disk holds. A memory's history can be
+long (put, stale, restore, stale, move, ...), but replaying its state needs
+three records: the put, the last status change, and the last move.
+`storage.compact` keeps exactly those, as the original records, up to a
+horizon, and keeps every record after the horizon verbatim, so the folded log
+replays to the same state. That is the LSM move: rewrite the sorted history
+into something smaller that answers the same reads. The price is history
+inside the horizon, which `as_of` can then only show folded.
+
+**Retention.** Purging is the one place a memory leaves the log, and it
+happens only during log compaction, only for memories a `RetentionPolicy`
+names (archived and old, by default), and only for memories with no record
+after the horizon. The compaction manifest lists them, so a later reference
+to a purged memory is known to be deliberate, not forged.
+
+**Integrity across rewrites.** A seal hashes the log up to an LSN. Compaction
+invalidates every earlier seal by design, so the manifest stores the old
+log's chain and a new seal covers the new log; `verify` skips seals older than
+the last horizon.
+
+**Checkpoints.** A snapshot is the state as JSON: each memory's first and last
+record, its status and tier. Opening from a snapshot reads only the records
+after it, through the engine's `records_after`.
+
+**One writer, many readers.** LSNs must come from one place. The server owns
+the log and runs every commit, so guards hold for every process; clients
+mirror the state by pulling the log's tail. This is the primary-replica
+shape, with the replicas also able to submit transactions.
+
+## Short-term memory is a cache
+
+The store holds every memory; short-term memory holds the few an agent works
+with now. `touch` is a cache access: a hit when the memory is in short-term
+memory, warm when it is in mid- or long-term, a miss when it is archived or
+no longer holds. A missed live memory is paged back in, and eviction makes
+room. Replacement policies are the classic ones (LRU, LFU, FIFO, 2Q, ARC) and
+the agent-memory ones (a forgetting curve, a recency-importance-frequency
+score, TTL by kind), plus an online learned policy. A policy that keeps state
+(ARC's ghost lists, the learned model's weights) is told about each use,
+eviction, and page-in.
+
+The mid-term tier is MemoryOS's segment store: evicted memories wait grouped
+by trace; a segment that keeps being used is promoted whole, and the coldest
+segment, when mid-term is full, is consolidated into one summary.
+
+## Questions this design settled
+
+- **Ordering on the blackboard.** Agents that name what they `produce` run upstream first, so a consumer rarely does work a producer is about to make stale; reads make the remaining reruns correct.
+- **Access counts and the log.** Reads stay out of the store's log, which would otherwise grow with every lookup. `AccessLog(record=True)` keeps the full sequence beside it, which is what policy benchmarks replay.
+- **Read references and scopes.** A read reference can carry the reader's scopes, so a memory it could not see does not invalidate its work.

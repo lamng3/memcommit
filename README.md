@@ -16,10 +16,10 @@
 <p align="center"><b>Lam Nguyen</b></p>
 
 > [!NOTE]
-> **Work in progress.** The store, traces, tiers and policies, compaction,
-> recall, the blackboard, and audit tools are built and tested. Policies
-> learned from traces and benchmarks on agent workloads are next; see the
-> [roadmap](#-roadmap).
+> **Research software.** Every feature in the [plan](PLAN.md) is built and
+> tested: the log-structured store, the short-term cache and its policies,
+> compaction of memories and of the log, recall, the blackboard, audit, and a
+> server. Results so far are on synthetic workloads.
 
 ## ⚡ Quick start
 
@@ -56,12 +56,29 @@ or newer; no runtime dependencies.
 Agents produce traces: thoughts, tool calls, observations, messages, results.
 Several agents working together read each other's traces as premises. Mneme
 stores all of it as JSON memories in one log, and treats agent memory as a
-database problem.
+database problem: a log-structured store, a cache in front of it, and
+compaction at two levels.
+
+<div align="center">
+
+| Database idea | In Mneme |
+|:--|:--|
+| Write-ahead log, replay, compensation | Every change is a record; state is a fold over the log; rollback writes compensating records |
+| Buffer pool / cache | Short-term memory: bounded per agent, `touch` is a hit or a miss, misses page back in |
+| Replacement policy | LRU, LFU, FIFO, 2Q, ARC, a forgetting curve, TTL, a scored or a learned policy |
+| Compaction (LSM) | Memory compaction: traces fold into summaries, cold segments consolidate. Log compaction: history folds to the fewest records that replay the same state |
+| Retention, vacuum | Purge archived memories past a retention policy when the log is compacted |
+| Checkpoints | Snapshots of the state; open replays only the tail |
+| Integrity | Content-addressed memories, hash-chain seals, `verify` |
+| Client/server | One process owns the log and runs every commit; agents in other processes use `RemoteStore` |
+
+</div>
 
 - **Traces are first-class.** A run is a root and a tree of typed steps. Each step commits on its own, so a crash keeps what happened, and a handoff starts another agent's sub-trace.
 - **Provenance drives invalidation.** Every memory records what it was `derived_from`. When a premise goes bad, everything built on it goes stale, transitively, in one transaction, and the agents that built on it redo their work.
 - **Reads are provenance too.** A memory can derive from a read (`query_ref("note", topic=...)`), so work that saw "nothing known" is redone when something becomes known.
-- **Tiers with pluggable policies.** Short-term working memory is bounded per scope; eviction (LRU, LFU, FIFO, 2Q, a forgetting curve, TTL by kind, or a recency-importance-frequency score) moves memories to the archive, promotion moves them to long-term, and compaction turns finished traces into long-term summaries. Every decision is a log record.
+- **Short-term memory is a cache.** It is bounded per scope; eviction moves memories out (to the archive, or to a mid-term tier of segments), promotion moves them to long-term, a used archived memory is paged back in, and compaction turns finished traces into long-term summaries. Every decision is a log record, and `tiers.stats` counts hits and misses.
+- **A database underneath.** Log compaction, retention, snapshots, seals, and a server for agents in many processes, on SQLite, JSONL, or any engine with two methods.
 - **A log, not a table.** Status and tier are a fold over an append-only log, so any past state can be rebuilt, and rollback is compensation that keeps history.
 - **Built to be defended.** Memories are content-addressed, writes pass through guards, and audit tools (`verify`, `lineage`, `blast_radius`, `quarantine`, `provenance_guard`) give a defender exact repairs.
 
@@ -69,9 +86,10 @@ database problem.
 
 | Tier | Holds | Moves out by |
 |:--|:--|:--|
-| `short` | New memories: an agent's working context | Eviction policy, to `archive`; promotion policy, to `long` |
-| `long` | Consolidated memories and trace summaries | Optional capacity and eviction, to `archive` |
-| `archive` | Everything evicted or compacted; searched on request | Never deleted: the log is append-only |
+| `short` | The cache: new memories, an agent's working context | Eviction, to `archive` (or `mid`); promotion, to `long` |
+| `mid` | Optional: evicted memories grouped into segments (by trace) | A hot segment is promoted to `long`; a cold one is consolidated into a summary and archived |
+| `long` | Consolidated memories and summaries | Optional capacity and eviction, to `archive` |
+| `archive` | Everything evicted or compacted; searched on request; paged back in on use | Purged only by log compaction under a retention policy |
 
 </div>
 
@@ -92,6 +110,8 @@ policy. A sanity check, not a benchmark on recorded agent traces.
 | Scored (recency, importance, frequency) | 0.377 | 0.542 | 0.826 | 32 |
 | Forgetting curve | **0.648** | **0.771** | **0.867** | 32 |
 | 2Q | 0.381 | 0.481 | 0.606 | 32 |
+| ARC | 0.551 | 0.663 | 0.763 | 32 |
+| Learned (online logistic) | 0.627 | 0.742 | 0.803 | 32 |
 | LRU + promote used (≥ 3 uses) | 0.869 | 0.894 | 0.924 | 121 |
 | Scored + promote important | 0.631 | 0.867 | 0.922 | 103 |
 
@@ -106,8 +126,11 @@ reason: this workload reuses fresh trace steps often, and both evict memories
 used only once first, which is exactly what a fresh step is. Promotion raises
 the hit rate by moving memories to long-term, which grows what is held (peak
 121 against a cap of 32); bound long-term with `long_capacity` to trade that
-back. Which policy wins depends on the workload, which is why policies are
-pluggable and the benchmark replays any workload.
+back. ARC and the learned policy sit between: both adapt, but on a workload
+this short they have little history to adapt from. A second seed gives the
+same order. Which policy wins depends on the workload, which is why policies
+are pluggable and the benchmark replays any workload, including one recorded
+from real agents (`AccessLog(record=True)`, then `bench.from_access_log`).
 
 ## 🔧 Usage
 
@@ -180,14 +203,15 @@ with status `error`. Step kinds are open; `thought`, `action`, `observation`,
 <summary><b>Tiers, policies, and compaction</b></summary>
 
 ```python
-from mneme import FIFO, LFU, TTL, Forgetting, Scored, AnyOf, ImportanceAtLeast, KindIn, FinishedTraces
+from mneme import ARC, Learned, TTL, Forgetting, Scored, AnyOf, ImportanceAtLeast, KindIn, KeepFailed
 
 tiers = TieredMemory(
     store,
     capacity=64,                                   # per partition; a partition is a scope by default
     eviction=Scored(recency=1.0, importance=1.0, frequency=0.5),
     promotion=AnyOf(AccessCount(3), ImportanceAtLeast(0.8), KindIn(["decision"])),
-    compactor=Compactor(store, policy=FinishedTraces(keep_recent=5), summarizer=my_llm_summary),
+    compactor=Compactor(store, policy=KeepFailed(records=5000), summarizer=my_llm_summary),
+    mid_capacity=256, heat_threshold=10.0,          # a mid-term tier of segments, MemoryOS-style
     long_capacity=10_000,
 )
 tiers.touch([m.id for m in context])   # count a use; archived memories are paged back in
@@ -242,6 +266,53 @@ agent writes nothing but an `error` memory in its own scope.
 </details>
 
 <details>
+<summary><b>The database: log compaction, retention, snapshots, seals</b></summary>
+
+```python
+from mneme.storage import ArchivedOlderThan, AutoSeal, check_seal, compact
+
+report = compact(store, retention=ArchivedOlderThan(seconds=30 * 86400))
+print(report.before, "->", report.after, "records; purged", len(report.purged))
+
+store.save_snapshot("state.json")
+store = mneme.open("memory.db", snapshot="state.json")   # replays only the records after the snapshot
+AutoSeal(store, every=1000)                               # a hash-chain seal every 1000 records
+assert check_seal(store)
+```
+
+Log compaction keeps, for each memory, its put, its last status change, and
+its last move, as the original records, so the folded log replays to the same
+state; records after the horizon are kept verbatim, and the engine swaps logs
+atomically. A `compaction` manifest records what was folded and purged, so
+`verify` still passes. History inside the horizon is what compaction gives up.
+
+</details>
+
+<details>
+<summary><b>Many processes, an event loop, many vectors</b></summary>
+
+```bash
+python -m mneme serve memory.db --port 7340      # one process owns the log
+python -m mneme verify memory.db                 # also: compact, stats
+```
+
+```python
+from mneme.server import RemoteStore
+store = RemoteStore("http://127.0.0.1:7340")      # a MemoryStore: traces, tiers, recall all work
+store.refresh()                                   # pull commits from other processes
+
+from mneme import AsyncMemoryStore, AnnIndex
+astore = AsyncMemoryStore(mneme.open("memory.db"))           # await astore.put(...)
+recall = Recall(store, index=AnnIndex(embed, dimensions=768))  # LSH for large vector recall
+```
+
+The server runs every commit, so LSNs and guards hold across processes; a
+refused commit raises `Rejected` in the client. Agents on a blackboard that
+name what they `produce` run upstream first.
+
+</details>
+
+<details>
 <summary><b>Engines</b></summary>
 
 | Engine | Where the log lives |
@@ -250,8 +321,9 @@ agent writes nothing but an `error` memory in its own scope.
 | `JsonlEngine` | One fsynced JSON line per transaction; a torn final line is dropped |
 | `SqliteEngine` | One SQLite transaction per commit, WAL journaling |
 
-Another backend subclasses `Engine` (two methods: `append` and `records`) and
-registers in `ENGINES`.
+Another backend subclasses `Engine` (two methods: `append` and `records`;
+`records_after` and `rewrite` have defaults it may speed up) and registers in
+`ENGINES`.
 
 </details>
 

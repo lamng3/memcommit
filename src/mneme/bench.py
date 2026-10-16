@@ -29,7 +29,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 
 from .policies import EvictionPolicy, PromotionPolicy
-from .records import ARCHIVE
+from .records import ARCHIVE, LONG, SHORT
 from .store import MemoryStore
 from .tiers import AccessLog, TieredMemory
 
@@ -88,7 +88,7 @@ def replay(
             if memory_id is None:
                 continue
             uses += 1
-            if store.tier(memory_id) != ARCHIVE:
+            if store.tier(memory_id) in (SHORT, LONG):
                 hits += 1
             tiers.touch([memory_id])
             if promotion is not None:

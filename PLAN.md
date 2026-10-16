@@ -2,46 +2,59 @@
 
 *Mneme: A Transactional Memory Layer for Agents.*
 
-This is the feature list. `docs/design.md` explains why; this file says what is built and what is next. Mneme is a standalone library: it names no agent system, model, or domain, and every integration lives in the project that uses it.
+This is the feature list. `docs/design.md` explains why; this file says what is built. Mneme is a standalone library: it names no agent system, model, or domain, and every integration lives in the project that uses it.
 
 ## Runs now
+
+### The log-structured store
 
 - **Memories.** Immutable, content-addressed JSON values with kind, key, body, source, scope, importance, and provenance.
 - **Log and state.** Records (`put`, `restore`, `stale`, `retract`, `move`) in LSN order; `State` is a fold over them, with indexes by (kind, key), by reference, and by read. `as_of(lsn)` rebuilds any past state.
 - **Transactions.** All or nothing; a rewrite of a live memory is a no-op, and a put of a known memory is a restore.
 - **Invalidation.** `invalidate(refs)` marks stale everything derived from the refs, transitively, in one transaction.
-- **Reads as provenance.** `query_ref(kind, key, **where)` names a read; a commit that brings a matching memory live marks what was built on the read stale, in the same transaction.
+- **Reads as provenance.** `query_ref(kind, key, scopes, **where)` names a read; a commit that brings a matching memory, visible to the reader, live marks what was built on the read stale, in the same transaction.
 - **Rollback.** `rollback_to(lsn)` writes compensating records for status and tier; history is kept.
 - **Guards, observers, deferred work.** Guards reject before the commit; observers react after it; `defer` runs work that writes once the commit is done.
+- **Engines.** `MemoryEngine`, `JsonlEngine`, `SqliteEngine`; each appends a transaction atomically, reads the tail after an LSN, and rewrites its log atomically. `mneme.open(path)`.
+
+### The database underneath
+
+- **Log compaction.** `storage.compact` folds every record up to a horizon into each memory's put, last status change, and last move, keeping the original records; the folded log replays to the same state. A `compaction` manifest records the horizon, the counts, the purged ids, and the old log's hash chain.
+- **Retention.** `ArchivedOlderThan`, `KindsAfter`, or any `RetentionPolicy` names memories to purge during compaction.
+- **Snapshots.** `save_snapshot` writes the state; `MemoryStore(engine, snapshot=path)` replays only the records after it.
+- **Seals.** `seal` writes a hash chain over the log; `AutoSeal` seals every N records; `check_seal` rechecks the newest; `verify` rechecks all of them after the last compaction.
+- **Many readers.** `refresh` applies records another writer appended.
+- **Server.** `MemoryServer` owns the log and runs every commit, so LSNs and guards hold across processes; `RemoteStore` is a `MemoryStore` on it. `python -m mneme serve | verify | compact | stats`.
+- **Async.** `AsyncMemoryStore`: commits in a worker thread, one at a time.
+
+### The cache and the tiers
+
+- **Tiers.** `short` (the cache), `mid` (optional segments), `long`, `archive`.
+- **Short-term as a cache.** `TieredMemory` bounds short-term memory per partition; `touch` counts a hit, a warm hit (mid or long), or a miss in `stats`, and pages a live archived memory back in.
+- **Eviction.** `FIFO`, `LRU`, `LFU`, `Scored`, `Forgetting` (Ebbinghaus), `TTL` by kind, `TwoQueue` (2Q), `ARC` (ghost lists, adaptive target), `Learned` (online logistic model). Stateful policies get `on_use`, `on_evict`, and `on_page_in`.
+- **Promotion.** `AccessCount`, `ImportanceAtLeast`, `KindIn`, `AnyOf`, `AllOf`, `Never`.
+- **Mid-term.** Evicted memories wait in segments (`by_trace`); a segment past `heat_threshold` is promoted whole; while mid-term is over capacity, the coldest segment is consolidated by `segment_summarizer` and archived.
+- **Access log.** A logical clock of uses, saved and loaded; with `record=True`, every write and use in order.
+
+### Memory compaction
+
 - **Traces.** `trace(...)` / `Trace`: a root and a tree of typed steps, each committed on its own; handoffs start sub-traces; `Trace.open(...).to_json()`.
-- **Tiers.** `short`, `long`, `archive`. `TieredMemory` bounds short-term memory per partition and runs maintenance after commits.
-- **Policies.** Eviction: `FIFO`, `LRU`, `LFU`, `Scored`, `Forgetting` (Ebbinghaus curve), `TTL` by kind, `TwoQueue` (2Q). A used archived memory is paged back into short-term memory. Promotion: `AccessCount`, `ImportanceAtLeast`, `KindIn`, `AnyOf`, `AllOf`, `Never`. `AccessLog` on a logical clock, saved and loaded.
-- **Compaction.** `Compactor` turns finished traces into long-term summaries and archives their steps; `outline` summarizer; `FinishedTraces` policy.
-- **Recall.** `Recall` scores relevance, recency, and importance; `LexicalIndex` (BM25) and `VectorIndex` (any embedder), kept in step by `CacheSync`.
+- **Compactor.** Finished traces become long-term summaries, steps go to the archive; `outline` or any summarizer.
+- **Policies.** `FinishedTraces`, `OlderThan`, `KeepFailed`, `UnderPressure`.
+- **Merging.** `Compactor.merge` folds summaries of the same task into one.
+
+### Agents, recall, and defense
+
 - **Sessions and scopes.** `AgentSession` reads `shared` plus the agent's scopes; `scope_guard`.
-- **Blackboard.** Agents consume kinds; results and a receipt commit together; exactly once across restarts; redo on invalidation; failures written as `error` memories.
-- **Audit.** `verify`, `lineage`, `blast_radius`, `quarantine`, `diff`, `provenance_guard`; `seal` writes a hash chain over the log that `verify` rechecks, so deleted or reordered records are caught.
-- **Engines.** `MemoryEngine`, `JsonlEngine`, `SqliteEngine`; `mneme.open(path)`.
-- **Benchmark.** `mneme.bench`: replay writes and uses through the real store under any policies; `synthetic` agent-shaped workloads; `examples/policy_benchmark.py` writes `results/policies/`.
+- **Blackboard.** Agents consume kinds (and may name what they produce, which orders them upstream first); results and a receipt commit together; exactly once across restarts; redo on invalidation; failures written as `error` memories.
+- **Recall.** Relevance, recency, and importance; `LexicalIndex` (BM25), `VectorIndex` (any embedder), `AnnIndex` (random-hyperplane LSH, multi-probe), all kept in step by `CacheSync`.
+- **Audit.** `verify`, `lineage`, `blast_radius`, `quarantine`, `diff`, `provenance_guard`, `seal`.
+
+### Measurement and examples
+
+- **Benchmark.** `mneme.bench`: replay writes and uses through the real store under any policies; `synthetic` workloads; `from_access_log` replays what agents did. `examples/policy_benchmark.py` writes `results/policies/`.
 - **Example.** `examples/shared_memory.py`: two agents, traces, tiers, compaction, recall, a late read, a poisoned tool, quarantine, and recovery.
 
 ## Building
 
-In order:
-
-| Feature | What it adds |
-|---|---|
-| Policy benchmark on recorded traces | `mneme.bench` replays synthetic workloads now; replay recorded multi-agent traces, where a use is a memory an agent actually recalled. |
-| More eviction policies | ARC, which adapts the split between once-used and reused memories; a policy hook for state kept between decisions. |
-| More compaction policies | Compact by age or by working-memory pressure; merge summaries of similar tasks; keep failed traces whole longer. |
-| Mid-term tier | Optional tier between short and long (MemoryOS's segments): traces grouped by topic before they are summarized. |
-| Learned policies | A model that scores candidates for eviction and promotion, trained on which memories agents later recalled. |
-| Automatic seals | Seal every N commits, and check the newest seal on open. |
-| Snapshots | Checkpoints of `State`, so replay starts from a snapshot instead of LSN 0. |
-| Retention | Purge archived memories past a retention period, keeping the log's hash chain intact with tombstones. |
-| Async API | `async` versions of commit and recall for agent frameworks that run in an event loop. |
-
-## Later, on purpose
-
-- A server, so agents in several processes share one store.
-- An approximate nearest-neighbour index for large vector recall.
+Nothing planned is unbuilt. New work starts as an experiment: a recorded workload to benchmark, or a policy to compare, measured with `mneme.bench` and written to `results/`.

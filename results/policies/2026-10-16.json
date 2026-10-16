@@ -69,6 +69,28 @@
       "hit_rate": 0.3814
     },
     {
+      "policy": "ARC",
+      "capacity": 16,
+      "uses": 472,
+      "hits": 260,
+      "promoted": 0,
+      "evicted": 556,
+      "paged_in": 212,
+      "peak_working": 16,
+      "hit_rate": 0.5508
+    },
+    {
+      "policy": "Learned",
+      "capacity": 16,
+      "uses": 472,
+      "hits": 296,
+      "promoted": 0,
+      "evicted": 520,
+      "paged_in": 176,
+      "peak_working": 16,
+      "hit_rate": 0.6271
+    },
+    {
       "policy": "LRU + promote used",
       "capacity": 16,
       "uses": 472,
@@ -157,6 +179,28 @@
       "hit_rate": 0.4809
     },
     {
+      "policy": "ARC",
+      "capacity": 32,
+      "uses": 472,
+      "hits": 313,
+      "promoted": 0,
+      "evicted": 487,
+      "paged_in": 159,
+      "peak_working": 32,
+      "hit_rate": 0.6631
+    },
+    {
+      "policy": "Learned",
+      "capacity": 32,
+      "uses": 472,
+      "hits": 350,
+      "promoted": 0,
+      "evicted": 450,
+      "paged_in": 122,
+      "peak_working": 32,
+      "hit_rate": 0.7415
+    },
+    {
       "policy": "LRU + promote used",
       "capacity": 32,
       "uses": 472,
@@ -243,6 +287,28 @@
       "paged_in": 186,
       "peak_working": 64,
       "hit_rate": 0.6059
+    },
+    {
+      "policy": "ARC",
+      "capacity": 64,
+      "uses": 472,
+      "hits": 360,
+      "promoted": 0,
+      "evicted": 408,
+      "paged_in": 112,
+      "peak_working": 64,
+      "hit_rate": 0.7627
+    },
+    {
+      "policy": "Learned",
+      "capacity": 64,
+      "uses": 472,
+      "hits": 379,
+      "promoted": 0,
+      "evicted": 389,
+      "paged_in": 93,
+      "peak_working": 64,
+      "hit_rate": 0.803
     },
     {
       "policy": "LRU + promote used",
