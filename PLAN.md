@@ -43,6 +43,11 @@ This is the feature list. `docs/design.md` explains why; this file says what is 
 - **Policies.** `FinishedTraces`, `OlderThan`, `KeepFailed`, `UnderPressure`.
 - **Merging.** `Compactor.merge` folds summaries of the same task into one.
 
+### A declared structure
+
+- **Schema.** `Schema` and `Kind`: a JSON-schema subset for each kind's body, allowed scopes (`shared`, `agent`, or a name), `requires` (kinds a memory must derive from), and default tier and importance. `strict` rejects undeclared kinds; MemCommit's own kinds are always allowed.
+- **Enforced and recorded.** `Schema.attach(store)` adds a commit guard and writes the schema to the log; a new version supersedes the old. `Schema.load`, `audit`, and `describe` (Markdown for agents).
+
 ### Agents, recall, and defense
 
 - **Sessions and scopes.** `AgentSession` reads `shared` plus the agent's scopes; `scope_guard`.

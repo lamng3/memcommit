@@ -56,6 +56,22 @@ Rollback is compensation, as in ARIES: the store computes the status and tier
 of every memory as of the target LSN and writes the records that move each
 one back. Nothing is erased.
 
+## A declared structure
+
+The core knows no domain. What a project's memories are (a `question`, an
+`answer`, a `fact`) is declared once, as a `Schema` of `Kind`s: a JSON schema
+for the body, where the kind may be written, which kinds it must be derived
+from, and a default tier. `Schema.attach` adds a guard that rejects a commit
+putting a memory out of line with its kind, and records the schema in the log
+as a memory. Because the guard runs at commit, it holds for every writer: a
+session, the blackboard, a remote client. Because the schema is in the log,
+`as_of(lsn)` shows which structure held when, and a changed schema marks the
+old one stale instead of editing it.
+
+Declaring `requires` is declaring provenance: a memory of the kind must name a
+premise of each required kind. The two halves of a memory's meaning, what it
+looks like and what it was built on, are checked together.
+
 ## Provenance drives invalidation
 
 `derived_from` holds memory ids and outside references (`doc:handbook@3`,

@@ -60,6 +60,7 @@ from .records import (
     Record,
     query_ref,
 )
+from .schema import AGENT, BUILTIN, SCHEMA, Kind, Schema, check_body
 from .session import AgentSession, scope_guard
 from .state import State
 from .store import SYSTEM, MemoryStore, Rejected, Transaction
@@ -75,8 +76,10 @@ def open(path: str | Path, **options: Any) -> MemoryStore:
 
 
 __all__ = [
+    "AGENT",
     "ARC",
     "ARCHIVE",
+    "BUILTIN",
     "ENGINES",
     "ERROR",
     "FIFO",
@@ -87,6 +90,7 @@ __all__ = [
     "MID",
     "RECEIPT",
     "RETRACTED",
+    "SCHEMA",
     "SEAL",
     "SHARED",
     "SHORT",
@@ -119,6 +123,7 @@ __all__ = [
     "ImportanceAtLeast",
     "JsonlEngine",
     "KeepFailed",
+    "Kind",
     "KindIn",
     "Learned",
     "LexicalIndex",
@@ -132,6 +137,7 @@ __all__ = [
     "Recall",
     "Record",
     "Rejected",
+    "Schema",
     "Scored",
     "SqliteEngine",
     "State",
@@ -146,6 +152,7 @@ __all__ = [
     "by_scope",
     "by_trace",
     "chain_digest",
+    "check_body",
     "diff",
     "lineage",
     "open",

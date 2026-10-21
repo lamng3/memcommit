@@ -74,6 +74,7 @@ compaction at two levels.
 
 </div>
 
+- **A declared memory structure.** A project names its kinds once (`Schema`, `Kind`): the shape of each body, where it may be written, what it must be derived from. A commit guard enforces it for every writer, and the schema itself is recorded in the log.
 - **Traces are first-class.** A run is a root and a tree of typed steps. Each step commits on its own, so a crash keeps what happened, and a handoff starts another agent's sub-trace.
 - **Provenance drives invalidation.** Every memory records what it was `derived_from`. When a premise goes bad, everything built on it goes stale, transitively, in one transaction, and the agents that built on it redo their work.
 - **Reads are provenance too.** A memory can derive from a read (`query_ref("note", topic=...)`), so work that saw "nothing known" is redone when something becomes known.
