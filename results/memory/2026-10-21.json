@@ -1,0 +1,268 @@
+{
+  "users": 20,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "sessions": {
+    "8": [
+      {
+        "name": "none",
+        "accuracy": 0.0,
+        "by_attribute": {
+          "city": 0.0,
+          "dog": 0.0,
+          "drink": 0.0,
+          "locker": 0.0
+        },
+        "context_words": 0.0,
+        "log_records": 0
+      },
+      {
+        "name": "full context",
+        "accuracy": 1.0,
+        "by_attribute": {
+          "city": 1.0,
+          "dog": 1.0,
+          "drink": 1.0,
+          "locker": 1.0
+        },
+        "context_words": 191.6,
+        "log_records": 1454
+      },
+      {
+        "name": "episodic",
+        "accuracy": 0.9167,
+        "by_attribute": {
+          "city": 0.6667,
+          "dog": 1.0,
+          "drink": 1.0,
+          "locker": 1.0
+        },
+        "context_words": 19.3,
+        "log_records": 1454
+      },
+      {
+        "name": "derived, online tools",
+        "accuracy": 0.25,
+        "by_attribute": {
+          "city": 0.0,
+          "dog": 0.0,
+          "drink": 0.0,
+          "locker": 1.0
+        },
+        "context_words": 6.0,
+        "log_records": 1514
+      },
+      {
+        "name": "derived, dreaming",
+        "accuracy": 0.8083,
+        "by_attribute": {
+          "city": 0.7167,
+          "dog": 1.0,
+          "drink": 0.5167,
+          "locker": 1.0
+        },
+        "context_words": 13.7,
+        "log_records": 1623
+      },
+      {
+        "name": "derived, both",
+        "accuracy": 0.775,
+        "by_attribute": {
+          "city": 0.5833,
+          "dog": 1.0,
+          "drink": 0.5167,
+          "locker": 1.0
+        },
+        "context_words": 13.8,
+        "log_records": 1703
+      },
+      {
+        "name": "episodic + derived",
+        "accuracy": 0.975,
+        "by_attribute": {
+          "city": 0.9,
+          "dog": 1.0,
+          "drink": 1.0,
+          "locker": 1.0
+        },
+        "context_words": 33.2,
+        "log_records": 1703
+      }
+    ],
+    "32": [
+      {
+        "name": "none",
+        "accuracy": 0.0,
+        "by_attribute": {
+          "city": 0.0,
+          "dog": 0.0,
+          "drink": 0.0,
+          "locker": 0.0
+        },
+        "context_words": 0.0,
+        "log_records": 0
+      },
+      {
+        "name": "full context",
+        "accuracy": 1.0,
+        "by_attribute": {
+          "city": 1.0,
+          "dog": 1.0,
+          "drink": 1.0,
+          "locker": 1.0
+        },
+        "context_words": 689.8,
+        "log_records": 5298
+      },
+      {
+        "name": "episodic",
+        "accuracy": 0.8917,
+        "by_attribute": {
+          "city": 0.5667,
+          "dog": 1.0,
+          "drink": 1.0,
+          "locker": 1.0
+        },
+        "context_words": 18.9,
+        "log_records": 5298
+      },
+      {
+        "name": "derived, online tools",
+        "accuracy": 0.25,
+        "by_attribute": {
+          "city": 0.0,
+          "dog": 0.0,
+          "drink": 0.0,
+          "locker": 1.0
+        },
+        "context_words": 6.0,
+        "log_records": 5358
+      },
+      {
+        "name": "derived, dreaming",
+        "accuracy": 0.8917,
+        "by_attribute": {
+          "city": 0.8833,
+          "dog": 1.0,
+          "drink": 0.6833,
+          "locker": 1.0
+        },
+        "context_words": 13.5,
+        "log_records": 5477
+      },
+      {
+        "name": "derived, both",
+        "accuracy": 0.8708,
+        "by_attribute": {
+          "city": 0.85,
+          "dog": 1.0,
+          "drink": 0.6333,
+          "locker": 1.0
+        },
+        "context_words": 13.6,
+        "log_records": 5557
+      },
+      {
+        "name": "episodic + derived",
+        "accuracy": 0.9875,
+        "by_attribute": {
+          "city": 0.95,
+          "dog": 1.0,
+          "drink": 1.0,
+          "locker": 1.0
+        },
+        "context_words": 32.8,
+        "log_records": 5557
+      }
+    ],
+    "64": [
+      {
+        "name": "none",
+        "accuracy": 0.0,
+        "by_attribute": {
+          "city": 0.0,
+          "dog": 0.0,
+          "drink": 0.0,
+          "locker": 0.0
+        },
+        "context_words": 0.0,
+        "log_records": 0
+      },
+      {
+        "name": "full context",
+        "accuracy": 1.0,
+        "by_attribute": {
+          "city": 1.0,
+          "dog": 1.0,
+          "drink": 1.0,
+          "locker": 1.0
+        },
+        "context_words": 1354.4,
+        "log_records": 10417
+      },
+      {
+        "name": "episodic",
+        "accuracy": 0.8917,
+        "by_attribute": {
+          "city": 0.5667,
+          "dog": 1.0,
+          "drink": 1.0,
+          "locker": 1.0
+        },
+        "context_words": 19.2,
+        "log_records": 10417
+      },
+      {
+        "name": "derived, online tools",
+        "accuracy": 0.25,
+        "by_attribute": {
+          "city": 0.0,
+          "dog": 0.0,
+          "drink": 0.0,
+          "locker": 1.0
+        },
+        "context_words": 6.0,
+        "log_records": 10477
+      },
+      {
+        "name": "derived, dreaming",
+        "accuracy": 0.9208,
+        "by_attribute": {
+          "city": 0.9167,
+          "dog": 1.0,
+          "drink": 0.7667,
+          "locker": 1.0
+        },
+        "context_words": 13.4,
+        "log_records": 10596
+      },
+      {
+        "name": "derived, both",
+        "accuracy": 0.875,
+        "by_attribute": {
+          "city": 0.7833,
+          "dog": 1.0,
+          "drink": 0.7167,
+          "locker": 1.0
+        },
+        "context_words": 13.5,
+        "log_records": 10676
+      },
+      {
+        "name": "episodic + derived",
+        "accuracy": 0.9833,
+        "by_attribute": {
+          "city": 0.9333,
+          "dog": 1.0,
+          "drink": 1.0,
+          "locker": 1.0
+        },
+        "context_words": 32.8,
+        "log_records": 10676
+      }
+    ]
+  }
+}

@@ -115,3 +115,16 @@ design as it stands; this file explains how it got there.
 - **Alternatives.** No preview; undo by retracting each written note.
 - **Why.** Consolidation edits shared knowledge, so a person or a test should be able to see it first. Rollback is compensation, so history is kept. Refusing when someone else wrote avoids undoing their work.
 - **Cost.** A dry run previews session learnings against the current notes, and maintenance against the notes as they are now, not as they would be after the new ones land.
+
+## 2026-10-21: Measure retrieval with a recency-aware reader, not a model
+
+- **Choice.** `memcommit.evaluation` builds a synthetic multi-session workload and scores configurations with a deterministic reader: right if the latest-mentioned value the user ever gave is the current one. Configurations are none, full context, episodic, derived with online tools, derived with dreaming, derived with both, and both tiers.
+- **Alternatives.** Score with a language model as reader; use an existing long-conversation benchmark.
+- **Why.** A model reader adds cost, noise, and a dependency, and mixes how well memory retrieves with how well a model reads. A deterministic reader makes every number reproducible and isolates retrieval and cleanliness. The workload is built so the questions need what each tier is for: facts said once, facts that change, facts implied, and facts asked to be remembered.
+- **Cost.** The workload is synthetic, so the numbers show behaviour, not real-world accuracy. Recorded conversations, and a model reader, are the next step; the harness takes a workload and a retrieval function, so both slot in.
+
+## 2026-10-21: Report the result that is unflattering
+
+- **Choice.** The results state that dreaming alone beats dreaming plus online tools, and that episodic search alone fails on facts that change.
+- **Why.** The first is a real effect of crowding and duplicate notes; the second is why the tiers are both needed. Hiding either would make the benchmark a demonstration instead of a measurement, and both point at work to do (deduplication across paths, stemming or embeddings).
+- **Cost.** None the project minds.

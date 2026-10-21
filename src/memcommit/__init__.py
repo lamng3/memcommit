@@ -27,6 +27,7 @@ from .compaction import (
 from .dream import DREAM, Change, Dreamer, DreamReport, Learning, heuristic_extractor
 from .engines import ENGINES, Engine, JsonlEngine, MemoryEngine, SqliteEngine, open_engine
 from .episodes import Episodes, Session
+from .evaluation import Result, Workload, evaluate, make_workload
 from .knowledge import KNOWLEDGE, Knowledge
 from .policies import (
     ARC,
@@ -148,6 +149,7 @@ __all__ = [
     "Recall",
     "Record",
     "Rejected",
+    "Result",
     "Schema",
     "Scored",
     "Session",
@@ -160,14 +162,17 @@ __all__ = [
     "TwoQueue",
     "UnderPressure",
     "VectorIndex",
+    "Workload",
     "blast_radius",
     "by_scope",
     "by_trace",
     "chain_digest",
     "check_body",
     "diff",
+    "evaluate",
     "heuristic_extractor",
     "lineage",
+    "make_workload",
     "open",
     "open_engine",
     "outline",

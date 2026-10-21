@@ -48,6 +48,12 @@ This is the feature list. `docs/design.md` explains why; this file says what is 
 - **Schema.** `Schema` and `Kind`: a JSON-schema subset for each kind's body, allowed scopes (`shared`, `agent`, or a name), `requires` (kinds a memory must derive from), and default tier and importance. `strict` rejects undeclared kinds; MemCommit's own kinds are always allowed.
 - **Enforced and recorded.** `Schema.attach(store)` adds a commit guard and writes the schema to the log; a new version supersedes the old. `Schema.load`, `audit`, and `describe` (Markdown for agents).
 
+### Two tiers of memory
+
+- **Episodic.** `Session` (a trace with user and agent turns, recorded tool calls with `wrap`/`call`, replies derived from what they read) and `Episodes` (`sessions`, `new_since(lsn)`).
+- **Derived.** `Knowledge`: notes at paths with title, tags, and importance; `add`, `update` (old version stale, dependents too), `delete` (retract); `ls`, `read`, `index(max_chars)`, `search(where=derived|episodic|all)`, `fetch` (a session id returns its transcript); `tools()` and `call` for five model-callable tools.
+- **Dreaming.** `Dreamer`: sessions that ended since the last `dream` record, an `Extractor` (`heuristic_extractor`, or any function), conflicts by supersession, duplicates archived, oversized notes split; `dry_run`, `undo`, `due`, `attach`.
+
 ### Agents, recall, and defense
 
 - **Sessions and scopes.** `AgentSession` reads `shared` plus the agent's scopes; `scope_guard`.
@@ -57,6 +63,7 @@ This is the feature list. `docs/design.md` explains why; this file says what is 
 
 ### Measurement and examples
 
+- **Memory benchmark.** `memcommit.evaluation`: a synthetic multi-session workload and a deterministic reader score seven configurations (none, full context, episodic, derived by tools, by dreaming, by both, both tiers). `examples/memory_benchmark.py` writes `results/memory/`.
 - **Benchmark.** `memcommit.bench`: replay writes and uses through the real store under any policies; `synthetic` workloads; `from_access_log` replays what agents did. `examples/policy_benchmark.py` writes `results/policies/`.
 - **Example.** `examples/shared_memory.py`: two agents, traces, tiers, compaction, recall, a late read, a poisoned tool, quarantine, and recovery.
 

@@ -17,9 +17,11 @@
 
 > [!NOTE]
 > **Research software.** Every feature in the [plan](PLAN.md) is built and
-> tested: the log-structured store, the short-term cache and its policies,
-> compaction of memories and of the log, recall, the blackboard, audit, and a
-> server. Results so far are on synthetic workloads.
+> tested: the log-structured store, a declared memory structure, episodic
+> sessions, derived notes with an index and agent tools, offline consolidation
+> ("dreaming"), the short-term cache and its policies, compaction of memories
+> and of the log, recall, the blackboard, audit, and a server. Results so far
+> are on synthetic workloads.
 
 ## ⚡ Quick start
 
@@ -59,6 +61,15 @@ stores all of it as JSON memories in one log, and treats agent memory as a
 database problem: a log-structured store, a cache in front of it, and
 compaction at two levels.
 
+It keeps two kinds of memory. **Episodic memory** is the full record of what
+happened: every session, turn, and tool call, appended as it occurs. **Derived
+memory** is what was learned from it: short notes at paths (`user/alice/city`),
+indexed so an agent can read the catalog first, searched across both tiers, and
+fetched in full when the detail matters. Agents write notes with tools; an
+offline pass ("dreaming") also extracts what the agents did not think to save,
+and keeps the notes tidy. Every note records the episode it came from, so a bad
+episode takes its notes with it.
+
 <div align="center">
 
 | Database idea | In MemCommit |
@@ -74,6 +85,8 @@ compaction at two levels.
 
 </div>
 
+- **Two tiers of memory.** Episodic sessions (`Session`) keep everything; derived notes (`Knowledge`) keep what matters, with a generated index and five agent tools (`add_memory`, `update_memory`, `delete_memory`, `search_memory`, `fetch_memory`).
+- **Dreaming.** An offline pass (`Dreamer`) reads sessions that ended since the last one, extracts learnings with a pluggable extractor (a model, or the built-in rules), supersedes conflicting notes, merges duplicates, splits oversized notes, and can be previewed (`dry_run`) or undone.
 - **A declared memory structure.** A project names its kinds once (`Schema`, `Kind`): the shape of each body, where it may be written, what it must be derived from. A commit guard enforces it for every writer, and the schema itself is recorded in the log.
 - **Traces are first-class.** A run is a root and a tree of typed steps. Each step commits on its own, so a crash keeps what happened, and a handoff starts another agent's sub-trace.
 - **Provenance drives invalidation.** Every memory records what it was `derived_from`. When a premise goes bad, everything built on it goes stale, transitively, in one transaction, and the agents that built on it redo their work.
@@ -96,7 +109,37 @@ compaction at two levels.
 
 ## 📊 Results
 
-How often is a memory an agent needs still in working memory? A synthetic,
+**Does memory help?** 20 users chat over 8 to 64 sessions each; facts come up in
+passing, some change later, and the rest is chatter and distractors. Each user
+is then asked for their current city, dog, drink, and locker code. A
+deterministic reader (no model) answers from whatever each configuration
+retrieves, so this measures retrieval and how clean it is. Synthetic; means over
+3 seeds.
+
+<div align="center">
+
+| Configuration | 8 sessions | 32 sessions | 64 sessions | Context words at 64 |
+|:--|:--:|:--:|:--:|--:|
+| none | 0.000 | 0.000 | 0.000 | 0 |
+| full history in context | 1.000 | 1.000 | 1.000 | 1,354 |
+| episodic search only | 0.917 | 0.892 | 0.892 | 19 |
+| notes saved by tool call only | 0.250 | 0.250 | 0.250 | 6 |
+| notes from dreaming only | 0.808 | 0.892 | 0.921 | 13 |
+| **episodic + notes (tools and dreaming)** | **0.975** | **0.988** | **0.983** | 33 |
+
+<sub>`python examples/memory_benchmark.py` · by attribute, and what it shows, in [`results/memory/`](results/memory/README.md)</sub>
+
+</div>
+
+The tiers answer different questions. Episodic search finds facts said once but
+not facts that change (the move shares no words with the question); dreaming
+supersedes the old note, so its accuracy rises as the history grows; both
+together read 33 words where the full history needs 1,354. Tools alone only
+remember what they are asked to. Adding tool notes to dreaming slightly lowers
+accuracy (0.921 to 0.875): duplicate and distractor notes crowd the top results,
+which the results page discusses.
+
+**Which eviction policy?** How often is a memory an agent needs still in working memory? A synthetic,
 agent-shaped workload (60 tasks writing 6 trace steps each, then 472 skewed
 reuses of earlier memories) replayed through the real store under each
 policy. A sanity check, not a benchmark on recorded agent traces.
@@ -154,6 +197,63 @@ store.put("researcher", "fact", "speed of light", {"value": "299,792 km/s"}, der
 hits = recall.search("speed of light", k=3)        # relevance + recency + importance
 store.invalidate([seen.id], reason="the tool was wrong")   # the fact goes stale too
 ```
+
+<details>
+<summary><b>A declared memory structure</b></summary>
+
+```python
+from memcommit import Kind, Schema
+
+schema = Schema(
+    Kind("question", body={"type": "object", "required": ["text"]}),
+    Kind("answer", requires=("question",), scopes=("shared", "agent"), tier="long",
+         body={"type": "object", "required": ["text", "confidence"],
+               "properties": {"confidence": {"type": "number", "minimum": 0, "maximum": 1}}}),
+    strict=True,                      # undeclared kinds are rejected
+)
+schema.attach(store)                  # a commit guard, and the schema recorded in the log
+schema.put(store, "asker", "question", "q1", {"text": "why?"})
+schema.audit(store)                   # live memories that do not conform
+print(schema.describe())              # the structure as Markdown, for agents
+```
+
+A kind declares the body's shape (a JSON-schema subset), where it may be
+written, the kinds it must be derived from, and its default tier. The guard
+holds for every writer, in every process, and a changed schema supersedes the
+old one in the log, so `as_of(lsn)` shows which structure held when.
+
+</details>
+
+<details>
+<summary><b>Sessions, notes, and dreaming</b></summary>
+
+```python
+from memcommit import Dreamer, Knowledge, Session
+
+with Session.start(store, "assistant", user="alice") as session:   # episodic: everything, as it happens
+    session.user_says("I live in Lyon, and my dog is named Rex.")
+    search = session.wrap(web_search, "web_search")                 # tool calls recorded with their results
+    session.agent_says("Noted.")
+
+notes = Knowledge(store, "assistant")                               # derived: what was learned
+notes.add("user/alice/city", "Alice lives in Lyon.", derived_from=[session.id])
+print(notes.index())                                                # the catalog, to inject at session start
+notes.search("where does alice live", where="all")                  # derived notes and episodes together
+notes.fetch("user/alice/city")                                      # in full; a session id returns its transcript
+notes.tools()                                                       # five tool specs a model can call
+
+dreamer = Dreamer(store)                    # or Dreamer(store, extractor=my_model_extractor)
+dreamer.run(dry_run=True).changes           # preview what it would change
+report = dreamer.run()                      # extract, supersede conflicts, merge duplicates, split big notes
+dreamer.undo(report)                        # roll a pass back, if nobody else has written since
+```
+
+An update writes a new version and marks the old one stale, and what was built
+on it; a retracted note, or a retracted episode, takes everything derived from
+it down too. `Dreamer.attach(min_sessions=3)` runs a pass whenever enough
+sessions have ended.
+
+</details>
 
 <details>
 <summary><b>Memories, transactions, and provenance</b></summary>
@@ -340,8 +440,12 @@ OntoDB is one such store; its engine lives with the workflow that uses it.
 
 ## 🧭 Roadmap
 
-See [`PLAN.md`](PLAN.md) for what runs now and what is next, and
-[`docs/design.md`](docs/design.md) for why.
+See [`PLAN.md`](PLAN.md) for what runs now and what is next,
+[`docs/design.md`](docs/design.md) for why, and
+[`docs/decisions.md`](docs/decisions.md) for the choices made along the way, with
+the alternatives and costs. Next: deduplication across paths and a stemming or
+embedding index (the benchmark shows where lexical search falls short), and the
+same benchmark on recorded conversations with a model as reader.
 
 ## 📝 Citation
 

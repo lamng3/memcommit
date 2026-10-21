@@ -72,6 +72,34 @@ Declaring `requires` is declaring provenance: a memory of the kind must name a
 premise of each required kind. The two halves of a memory's meaning, what it
 looks like and what it was built on, are checked together.
 
+## Two tiers of memory
+
+Episodic memory is the record: every session, turn, and tool call, appended as
+it happens and never rewritten. Derived memory is the distillation: short notes
+at paths, written by agents through tools or extracted offline, small enough to
+index and put in front of a model. They answer different questions. The record
+holds detail a summary dropped, and can be searched or fetched on demand; the
+notes say what matters and what is current, which a search over the record
+cannot (a later "I moved to Paris" shares no words with "where does she live").
+
+A note is derived from the episodes it came from, so the link between the tiers
+is provenance, and it works in both directions: `fetch` follows it to the detail,
+and retracting an episode stales the notes built on it. The notes are mutable
+only in appearance: an update writes a new version and marks the old stale.
+
+## Dreaming
+
+Saving notes by tool call only catches what an agent thought to save. An offline
+pass reads the sessions that ended since the last pass, asks an extractor (a
+function; the built-in one needs no model) for what is worth keeping, and
+writes it as notes derived from the session. Then it maintains the store:
+a newer statement supersedes an older note, near-duplicates go to the archive,
+and oversized notes are split. It runs offline, so it costs nothing while an
+agent answers, and it records what it covered in the log, which is how the
+next pass knows where to start. Every edit is a transaction with provenance, so
+a pass can be previewed, audited, repaired by retracting a bad episode, or
+undone.
+
 ## Provenance drives invalidation
 
 `derived_from` holds memory ids and outside references (`doc:handbook@3`,
