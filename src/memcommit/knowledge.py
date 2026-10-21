@@ -100,7 +100,7 @@ class Knowledge:
         notes = self.ls()
         state = self.store.state
         ranked = sorted(notes, key=lambda m: (-m.importance, -state.last[m.id].lsn))
-        header = f"# Memory index\n\n{len(notes)} notes. Use search_memory to find more, fetch_memory to read one.\n"
+        header = f"# Memory index\n\n{len(notes)} notes. Use search_memory to find more, fetch_memory to read one."
         shown: list[Memory] = []
         used = len(header) + 80
         for m in ranked:

@@ -46,6 +46,7 @@ from .traces import TRACE_END
 
 DREAM = "dream"
 DREAMER = "dreamer"
+MEMORY_TOOLS = frozenset({"add_memory", "update_memory", "delete_memory", "search_memory", "fetch_memory"})
 
 
 @dataclass(frozen=True)
@@ -127,7 +128,7 @@ def heuristic_extractor(session: Session) -> list[Learning]:
                     importance=0.7,
                 )
             )
-    calls = [t for t in session.transcript() if t["role"] == "tool_call"]
+    calls = [t for t in session.transcript() if t["role"] == "tool_call" and t["tool"] not in MEMORY_TOOLS]
     if turns and len(calls) >= 2 and session.trace.status() == "ok":
         task = turns[0]["text"]
         steps = " then ".join(f"{c['tool']}({_short(c['arguments'])})" for c in calls)

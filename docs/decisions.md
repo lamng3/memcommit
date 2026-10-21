@@ -128,3 +128,22 @@ design as it stands; this file explains how it got there.
 - **Choice.** The results state that dreaming alone beats dreaming plus online tools, and that episodic search alone fails on facts that change.
 - **Why.** The first is a real effect of crowding and duplicate notes; the second is why the tiers are both needed. Hiding either would make the benchmark a demonstration instead of a measurement, and both point at work to do (deduplication across paths, stemming or embeddings).
 - **Cost.** None the project minds.
+
+## 2026-10-21: Stem and drop stopwords in the lexical index
+
+- **Choice.** `LexicalIndex` searches by lowercase terms without a small list of stopwords, with a light stemmer (plural, past, and gerund endings), so `live`, `lives`, `lived`, and `living` agree.
+- **Alternatives.** Leave exact word matching; require an embedding index for any fuzzy match.
+- **Why.** The demo answered "How is the weather?" with a note about a wifi password (the shared words were "is" and "the"), and the benchmark showed "live" failing to find "lives". Both are standard lexical-search failures with standard fixes, and MemCommit has no dependencies to lean on for better ones.
+- **Cost.** A crude stemmer conflates some unrelated words, and stopword removal drops them from exact phrase intent. An embedding index (`VectorIndex`) remains the way to match meaning.
+
+## 2026-10-21: Fix a circular benchmark rather than report it
+
+- **Choice.** Half of the workload's statements are now paraphrases the rule-based extractor cannot parse. An oracle extractor, labelled as an upper bound, separates the extractor from the rest of the pipeline.
+- **Why.** The first benchmark gave the rules text written to match them and showed derived memory at 1.000, which measured nothing. With paraphrases, derived memory falls to about 0.49 and the two tiers roughly tie search alone, which is the true state: the pipeline works, the rule extractor is the limit.
+- **Cost.** The headline is less flattering, and the case for the notes now rests on a model-backed extractor that is not built yet. The results page says both.
+
+## 2026-10-21: A demo that needs no model
+
+- **Choice.** `memcommit demo` runs a scripted assistant through declaring the structure, sessions with tools, the index at session start, dreaming, a changed fact, a retracted episode, and the benchmark, with no network and no model. `index`, `search`, and `dream` inspect any store from the command line.
+- **Why.** A first run should work in seconds, offline, and show the whole loop. A scripted assistant keeps the output deterministic, so it can be tested and quoted.
+- **Cost.** The assistant is a stand-in. Wiring a real model means writing its tool-calling loop against `Knowledge.tools()`.

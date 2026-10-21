@@ -66,8 +66,85 @@ def text_of(memory: Memory) -> str:
     return " ".join(parts)
 
 
+STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "but",
+        "by",
+        "do",
+        "does",
+        "did",
+        "for",
+        "from",
+        "had",
+        "has",
+        "have",
+        "how",
+        "i",
+        "if",
+        "in",
+        "is",
+        "it",
+        "its",
+        "me",
+        "my",
+        "of",
+        "on",
+        "or",
+        "our",
+        "so",
+        "that",
+        "the",
+        "their",
+        "there",
+        "these",
+        "they",
+        "this",
+        "to",
+        "was",
+        "we",
+        "were",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "why",
+        "will",
+        "with",
+        "you",
+        "your",
+        "s",
+    }
+)
+
+
+def stem(word: str) -> str:
+    """A light stemmer: plural, past, and gerund endings off, so `live`, `lives`, `lived`, `living` agree."""
+    if len(word) > 4 and word.endswith("ies"):
+        return word[:-3] + "y"
+    for suffix in ("ing", "ed", "es", "s"):
+        if (
+            word.endswith(suffix)
+            and len(word) - len(suffix) >= 3
+            and not (suffix == "s" and word.endswith(("ss", "us")))
+        ):
+            word = word[: -len(suffix)]
+            break
+    if len(word) > 3 and word[-1] == word[-2] and word[-1] not in "lsz":
+        word = word[:-1]  # preferred -> preferr -> prefer
+    return word[:-1] if len(word) > 3 and word.endswith("e") else word
+
+
 def words(text: str) -> list[str]:
-    return WORD.findall(text.lower())
+    """The terms a text is searched by: lowercase words without stopwords, stemmed."""
+    return [stem(w) for w in WORD.findall(text.lower()) if w not in STOPWORDS]
 
 
 class LexicalIndex:

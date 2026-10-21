@@ -5,10 +5,12 @@
         print(result.name, result.accuracy, result.context_words)
 
 The workload is synthetic: users chat with an assistant over many sessions.
-Facts are stated in passing ("I live in Lyon"), some are stated as a request
+Facts are stated in passing ("I live in Lyon"), one is stated as a request
 to remember ("Remember that my locker code is 4412"), some change later ("I
 moved to Paris"), and the rest is chatter, including distractors that look like
-facts. Afterwards each user is asked for their current city, their dog's name,
+facts. Half the statements are paraphrases the built-in extractor cannot parse
+("Our dog goes by the name Rex"), so it is not graded only on text built for it;
+search can still find them. Afterwards each user is asked for their current city, their dog's name,
 their drink, and their locker code.
 
 No model is involved. A configuration builds a context for the question from
@@ -28,6 +30,10 @@ Configurations:
 - `derived, dreaming`: notes an offline pass extracted from the sessions.
 - `derived, both`: online tools and dreaming.
 - `episodic + derived`: the best few of each tier.
+- The `oracle` configurations replace the built-in extractor with one that parses
+  every phrasing the workload uses. They are an upper bound on extraction, what a
+  good model-backed extractor would approach, and show what the notes deliver when
+  extraction is perfect.
 
 Each result reports accuracy, the words of context the reader was given, and the
 log records the memory cost to build. For the last configuration it also reports
@@ -41,7 +47,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from .dream import Dreamer
+from .dream import Dreamer, Extractor, Learning, heuristic_extractor
 from .episodes import Session
 from .knowledge import KNOWLEDGE, WORKING, Knowledge
 from .recall import Recall
@@ -89,8 +95,14 @@ class Workload:
     questions: list[Question]
 
 
-def make_workload(users: int = 20, sessions: int = 8, seed: int = 0) -> Workload:
+def make_workload(users: int = 20, sessions: int = 8, seed: int = 0, paraphrase: float = 0.5) -> Workload:
+    """`paraphrase` is the share of facts stated in words the built-in extractor cannot parse ("Our dog goes by the
+    name Rex") rather than in the forms it is built for ("my dog is named Rex"). Search can still find both."""
     rng = random.Random(seed)
+
+    def say(plain: str, other: str) -> str:
+        return other if rng.random() < paraphrase else plain
+
     names = [f"user{n:02d}" for n in range(users)]
     plan: dict[str, list[list[str]]] = {name: [[] for _ in range(sessions)] for name in names}
     questions: list[Question] = []
@@ -102,13 +114,17 @@ def make_workload(users: int = 20, sessions: int = 8, seed: int = 0) -> Workload
         city_slots = sorted(slots[:2]) if moved else slots[:1]
         dog_slot, drink_slot, locker_slot = slots[-3:]
         facts = [
-            (f"I live in {cities[0]}.", city_slots[0]),
-            (f"By the way, my dog is named {dog}.", dog_slot),
-            (f"I prefer {drink}.", drink_slot),
-            (f"Remember that my locker code is {code}.", locker_slot),
+            (say(f"I live in {cities[0]}.", f"{cities[0]} is where I have lived for years."), city_slots[0]),
+            (say(f"By the way, my dog is named {dog}.", f"Our dog goes by the name {dog}."), dog_slot),
+            (say(f"I prefer {drink}.", f"Preferring {drink} over everything else, honestly."), drink_slot),
+            (
+                say(f"Remember that my locker code is {code}.", f"Please keep in mind the locker code, it is {code}."),
+                locker_slot,
+            ),
         ]
         if moved:
-            facts.append((f"Big news: I moved to {cities[1]}.", city_slots[1]))
+            moved_line = say(f"Big news: I moved to {cities[1]}.", f"{cities[1]} is where I have lived since the move.")
+            facts.append((moved_line, city_slots[1]))
         for line, at in facts:
             plan[name][at].append(line)
         gold = {"city": cities[-1], "dog": dog, "drink": drink, "locker": code}
@@ -130,7 +146,38 @@ def _explicit(text: str) -> str | None:
     return found.group(1).strip() if found else None
 
 
-def build(workload: Workload, online: bool, dream: bool) -> tuple[MemoryStore, Knowledge]:
+_ORACLE = {
+    "city": [r"I (?:live in|moved to) ([A-Z]\w+)", r"([A-Z]\w+) is where I have lived"],
+    "dog": [r"my dog is named (\w+)", r"Our dog goes by the name (\w+)"],
+    "drink": [r"I prefer ([a-z ]+?)\.", r"Preferring ([a-z ]+?) over"],
+    "locker": [r"locker code is (\d+)", r"locker code, it is (\d+)"],
+}
+_PHRASE = {
+    "city": "{u} lives in {v}.",
+    "dog": "{u}'s dog is {v}.",
+    "drink": "{u} prefers {v}.",
+    "locker": "{u}'s locker code is {v}.",
+}
+
+
+def oracle_extractor(session: Session) -> list[Learning]:
+    """An extractor that parses every phrasing the workload uses: an upper bound on extraction, what a good model
+    would approach. It is told what to look for, so it shows what the notes deliver when extraction is perfect."""
+    out = []
+    for turn in session.transcript():
+        if turn["role"] != "user":
+            continue
+        for attribute, patterns in _ORACLE.items():
+            for pattern in patterns:
+                for value in re.findall(pattern, turn["text"]):
+                    text = _PHRASE[attribute].format(u=session.user, v=value)
+                    out.append(Learning(f"user/{session.user}/{attribute}", text, sources=(turn["id"],)))
+    return out
+
+
+def build(
+    workload: Workload, online: bool, dream: bool, extractor: Extractor = heuristic_extractor
+) -> tuple[MemoryStore, Knowledge]:
     """Run every session through a store. With `online`, the agent saves what users ask it to remember, by tool
     call, as it goes. With `dream`, an offline pass reads all the sessions afterwards."""
     store = MemoryStore()
@@ -145,7 +192,7 @@ def build(workload: Workload, online: bool, dream: bool) -> tuple[MemoryStore, K
                     notes.call("add_memory", {"path": path, "text": f"{user}: {request}."}, session=session)
                 session.agent_says("Noted.")
     if dream:
-        Dreamer(store).run()
+        Dreamer(store, extractor=extractor).run()
     return store, notes
 
 
@@ -226,24 +273,29 @@ def evaluate(workload: Workload, k: int = 3) -> list[Result]:
     recall_e = Recall(store_e)
     results.append(_score("full context", workload, store_e, lambda q: Context(_everything(store_e, q))))
     results.append(_score("episodic", workload, store_e, lambda q: Context(_episodic(store_e, recall_e, q, k))))
-    for name, online, dream in (
-        ("derived, online tools", True, False),
-        ("derived, dreaming", False, True),
-        ("derived, both", True, True),
+    for name, online, dream, extractor in (
+        ("derived, online tools", True, False, heuristic_extractor),
+        ("derived, dreaming", False, True, heuristic_extractor),
+        ("derived, both", True, True, heuristic_extractor),
+        ("derived, dreaming, oracle extractor", False, True, oracle_extractor),
     ):
-        store, _ = build(workload, online, dream)
+        store, _ = build(workload, online, dream, extractor)
         recall = Recall(store)
         results.append(_score(name, workload, store, lambda q, s=store, r=recall: Context(_derived(s, r, q, k))))
-    store, _ = build(workload, True, True)
-    recall = Recall(store)
-    results.append(
-        _score(
-            "episodic + derived",
-            workload,
-            store,
-            lambda q: Context(_episodic(store, recall, q, k) + _derived(store, recall, q, k)),
+    for name, extractor in (
+        ("episodic + derived", heuristic_extractor),
+        ("episodic + derived, oracle", oracle_extractor),
+    ):
+        store, _ = build(workload, True, True, extractor)
+        recall = Recall(store)
+        results.append(
+            _score(
+                name,
+                workload,
+                store,
+                lambda q, s=store, r=recall: Context(_episodic(s, r, q, k) + _derived(s, r, q, k)),
+            )
         )
-    )
     return results
 
 

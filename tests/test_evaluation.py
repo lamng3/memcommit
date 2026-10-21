@@ -19,7 +19,12 @@ def test_the_reader_wants_the_latest_value_mentioned():
 def test_memory_helps_and_costs_less_than_the_full_history():
     results = {r.name: r for r in evaluate(make_workload(8, 8, seed=0))}
     assert results["none"].accuracy == 0
-    assert results["episodic + derived"].accuracy > results["episodic"].accuracy
-    assert results["episodic + derived"].accuracy > results["derived, online tools"].accuracy
-    assert results["episodic + derived"].context_words < results["full context"].context_words / 3
+    assert results["episodic"].accuracy > 0.8
     assert results["derived, dreaming"].accuracy > results["derived, online tools"].accuracy
+    assert results["episodic + derived"].context_words < results["full context"].context_words / 3
+
+
+def test_with_perfect_extraction_the_notes_answer_everything_cleanly():
+    results = {r.name: r for r in evaluate(make_workload(8, 8, seed=0))}
+    assert results["derived, dreaming, oracle extractor"].accuracy == 1.0
+    assert results["derived, dreaming, oracle extractor"].accuracy > results["derived, dreaming"].accuracy

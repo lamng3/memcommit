@@ -110,34 +110,38 @@ episode takes its notes with it.
 ## 📊 Results
 
 **Does memory help?** 20 users chat over 8 to 64 sessions each; facts come up in
-passing, some change later, and the rest is chatter and distractors. Each user
-is then asked for their current city, dog, drink, and locker code. A
-deterministic reader (no model) answers from whatever each configuration
-retrieves, so this measures retrieval and how clean it is. Synthetic; means over
-3 seeds.
+passing (half in paraphrases the built-in extractor cannot parse), some change
+later, and the rest is chatter and distractors. Each user is then asked for their
+current city, dog, drink, and locker code. A deterministic reader (no model)
+answers from whatever each configuration retrieves, so this measures retrieval
+and how clean it is. Synthetic; means over 3 seeds.
 
 <div align="center">
 
 | Configuration | 8 sessions | 32 sessions | 64 sessions | Context words at 64 |
 |:--|:--:|:--:|:--:|--:|
 | none | 0.000 | 0.000 | 0.000 | 0 |
-| full history in context | 1.000 | 1.000 | 1.000 | 1,354 |
-| episodic search only | 0.917 | 0.892 | 0.892 | 19 |
-| notes saved by tool call only | 0.250 | 0.250 | 0.250 | 6 |
-| notes from dreaming only | 0.808 | 0.892 | 0.921 | 13 |
-| **episodic + notes (tools and dreaming)** | **0.975** | **0.988** | **0.983** | 33 |
+| full history in context | 1.000 | 1.000 | 1.000 | 1,358 |
+| episodic search only | 0.958 | 0.958 | 0.958 | 20 |
+| notes from dreaming only | 0.492 | 0.512 | 0.487 | 15 |
+| episodic + notes | 0.942 | 0.971 | 0.958 | 35 |
+| notes from dreaming, oracle extractor * | 1.000 | 1.000 | 1.000 | 12 |
+| episodic + notes, oracle extractor * | **1.000** | **1.000** | **1.000** | 33 |
 
-<sub>`python examples/memory_benchmark.py` · by attribute, and what it shows, in [`results/memory/`](results/memory/README.md)</sub>
+<sub>`python examples/memory_benchmark.py` · * an extractor that parses every phrasing, an upper bound · more in [`results/memory/`](results/memory/README.md)</sub>
 
 </div>
 
-The tiers answer different questions. Episodic search finds facts said once but
-not facts that change (the move shares no words with the question); dreaming
-supersedes the old note, so its accuracy rises as the history grows; both
-together read 33 words where the full history needs 1,354. Tools alone only
-remember what they are asked to. Adding tool notes to dreaming slightly lowers
-accuracy (0.921 to 0.875): duplicate and distractor notes crowd the top results,
-which the results page discusses.
+Search over the record reads 20 words where the full history needs 1,358, and is
+right 96% of the time; its misses are facts that changed, since the move often
+shares few words with the question. Notes fix that when extraction is good: with
+a perfect extractor they are right every time from 12 words, because the later
+statement supersedes the old note. With the built-in rule extractor, which parses
+half the phrasings, they are right about half the time, and the two tiers together
+only match search alone. So the pipeline holds up, and extraction quality is what
+limits it; a model-backed `Extractor` is the next step. (An earlier version of this
+benchmark used only phrasings the rules were written for and scored 1.000: that was
+circular, and the results page says so. Its paraphrases also share words with the questions, which favours search; the results page says that too.)
 
 **Which eviction policy?** How often is a memory an agent needs still in working memory? A synthetic,
 agent-shaped workload (60 tasks writing 6 trace steps each, then 472 skewed
