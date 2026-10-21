@@ -39,7 +39,7 @@ design as it stands; this file explains how it got there.
 - **Why.** MemCommit has no runtime dependencies and should stay that way. The subset covers what memory bodies need, and a schema written in it stays valid JSON Schema, so it can move to a full validator later.
 - **Cost.** No `$ref`, `oneOf`, or `pattern`. A kind that needs them can add a guard.
 
-## 2026-10-21: `requires` ties structure to provenance
+## 2026-10-21: A kind can require its premises
 
 - **Choice.** A kind can require that memories of it derive from memories of named kinds (an `answer` from a `question`).
 - **Alternatives.** Only validate bodies; leave provenance rules to `provenance_guard`.
