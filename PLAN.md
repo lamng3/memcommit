@@ -65,6 +65,7 @@ This is the feature list. `docs/design.md` explains why; this file says what is 
 
 - **Memory benchmark.** `memcommit.evaluation`: a synthetic multi-session workload and a deterministic reader score seven configurations (none, full context, episodic, derived by tools, by dreaming, by both, both tiers). `examples/memory_benchmark.py` writes `results/memory/`.
 - **Benchmark.** `memcommit.bench`: replay writes and uses through the real store under any policies; `synthetic` workloads; `from_access_log` replays what agents did. `examples/policy_benchmark.py` writes `results/policies/`.
+- **Demo.** `memcommit demo`: a scripted assistant (no model) through a declared structure, sessions with tools, the index, dreaming, a changed fact, and a retracted episode. `index`, `search`, and `dream` inspect any store.
 - **Example.** `examples/shared_memory.py`: two agents, traces, tiers, compaction, recall, a late read, a poisoned tool, quarantine, and recovery.
 
 ## Building

@@ -29,29 +29,38 @@
 git clone https://github.com/lamng3/memcommit.git
 cd memcommit
 pip install -e ".[dev]"
-python examples/shared_memory.py
+memcommit demo
 ```
 
 ```text
-1. Ask three questions; the agents answer through the shared memory
-   6 agent steps, 3 traces
-2. Working memory stays bounded; finished traces become long-term summaries
-   tiers: {'short': 12, 'archive': 18, 'long': 3}
-4. A note arrives later; the brief that read 'no notes' is redone
-   Speed of light: 299,792 km/s (in a vacuum).
-5. The lookup tool is compromised, and a re-asked question picks up the lie
-   Speed of light: about 30 km/s (in a vacuum).
-6. A defender traces the damage and quarantines the poisoned observation
-   Speed of light: 299,792 km/s (in a vacuum).
-7. The record
-   verify: ok
+1. The structure is declared once, and every write is checked against it
+2. Two users talk to the assistant; it keeps the full record of each session
+3. Dreaming: an offline pass extracts what was implied, with provenance back to the turns
+   pass: 3 notes added from 2 sessions
+4. The next session starts with the index, then answers from notes
+   alice: What is the name of alice's dog?
+   assistant: alice's dog is Rex.
+5. A fact changes; the pass supersedes the note, and what was built on the old one goes stale
+   city note: alice lives in Paris.
+   the trip plan built on the old note is now stale
+6. An episode turns out to be spoofed; the notes learned from it go stale
+   note 'mallory lives in Atlantis.' is now stale
+7. Does it help? A synthetic benchmark, no model (more in results/memory/)
+8. The record
+   51 log records, verify: ok
 ```
 
-Two agents share one memory: a researcher calls a tool and records what it
-found, and a writer turns findings into briefs. Neither calls the other. When
-the tool is compromised, the defender finds everything the bad observation
-reached and quarantines it, and the agents redo only that work. Python 3.11
-or newer; no runtime dependencies.
+A scripted assistant (no model, no network) talks to users over several
+sessions. It reads an index of what it knows, answers from notes it searches, and
+saves what it is asked to remember; between sessions an offline pass turns what
+was said into notes, each derived from the turns it came from. When a fact
+changes, or an episode turns out to be spoofed, the notes built on it go stale
+and nothing keeps leaning on them. Python 3.11 or newer; no runtime
+dependencies. The older multi-agent example, with a blackboard, a poisoned tool,
+and a defender, is `python examples/shared_memory.py`.
+
+Inspect any store: `memcommit index memory.db`, `memcommit search memory.db "where does alice live" --where all`,
+`memcommit dream memory.db --dry-run`.
 
 ## ✨ What it is
 
