@@ -63,7 +63,7 @@ class AgentSession:
         return self.store.put(self.agent, kind, key, body, **kwargs)
 
     def trace(self, task: str, **options: Any) -> AbstractContextManager[Trace]:
-        """A run of this agent, as a block. See `mneme.traces.trace`."""
+        """A run of this agent, as a block. See `memcommit.traces.trace`."""
         return trace(self.store, self.agent, task, **options)
 
 

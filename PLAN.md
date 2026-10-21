@@ -1,8 +1,8 @@
-# Mneme
+# MemCommit
 
-*Mneme: A Transactional Memory Layer for Agents.*
+*MemCommit: A Transactional Memory Layer for Agents.*
 
-This is the feature list. `docs/design.md` explains why; this file says what is built. Mneme is a standalone library: it names no agent system, model, or domain, and every integration lives in the project that uses it.
+This is the feature list. `docs/design.md` explains why; this file says what is built. MemCommit is a standalone library: it names no agent system, model, or domain, and every integration lives in the project that uses it.
 
 ## Runs now
 
@@ -15,7 +15,7 @@ This is the feature list. `docs/design.md` explains why; this file says what is 
 - **Reads as provenance.** `query_ref(kind, key, scopes, **where)` names a read; a commit that brings a matching memory, visible to the reader, live marks what was built on the read stale, in the same transaction.
 - **Rollback.** `rollback_to(lsn)` writes compensating records for status and tier; history is kept.
 - **Guards, observers, deferred work.** Guards reject before the commit; observers react after it; `defer` runs work that writes once the commit is done.
-- **Engines.** `MemoryEngine`, `JsonlEngine`, `SqliteEngine`; each appends a transaction atomically, reads the tail after an LSN, and rewrites its log atomically. `mneme.open(path)`.
+- **Engines.** `MemoryEngine`, `JsonlEngine`, `SqliteEngine`; each appends a transaction atomically, reads the tail after an LSN, and rewrites its log atomically. `memcommit.open(path)`.
 
 ### The database underneath
 
@@ -24,7 +24,7 @@ This is the feature list. `docs/design.md` explains why; this file says what is 
 - **Snapshots.** `save_snapshot` writes the state; `MemoryStore(engine, snapshot=path)` replays only the records after it.
 - **Seals.** `seal` writes a hash chain over the log; `AutoSeal` seals every N records; `check_seal` rechecks the newest; `verify` rechecks all of them after the last compaction.
 - **Many readers.** `refresh` applies records another writer appended.
-- **Server.** `MemoryServer` owns the log and runs every commit, so LSNs and guards hold across processes; `RemoteStore` is a `MemoryStore` on it. `python -m mneme serve | verify | compact | stats`.
+- **Server.** `MemoryServer` owns the log and runs every commit, so LSNs and guards hold across processes; `RemoteStore` is a `MemoryStore` on it. `python -m memcommit serve | verify | compact | stats`.
 - **Async.** `AsyncMemoryStore`: commits in a worker thread, one at a time.
 
 ### The cache and the tiers
@@ -52,9 +52,9 @@ This is the feature list. `docs/design.md` explains why; this file says what is 
 
 ### Measurement and examples
 
-- **Benchmark.** `mneme.bench`: replay writes and uses through the real store under any policies; `synthetic` workloads; `from_access_log` replays what agents did. `examples/policy_benchmark.py` writes `results/policies/`.
+- **Benchmark.** `memcommit.bench`: replay writes and uses through the real store under any policies; `synthetic` workloads; `from_access_log` replays what agents did. `examples/policy_benchmark.py` writes `results/policies/`.
 - **Example.** `examples/shared_memory.py`: two agents, traces, tiers, compaction, recall, a late read, a poisoned tool, quarantine, and recovery.
 
 ## Building
 
-Nothing planned is unbuilt. New work starts as an experiment: a recorded workload to benchmark, or a policy to compare, measured with `mneme.bench` and written to `results/`.
+Nothing planned is unbuilt. New work starts as an experiment: a recorded workload to benchmark, or a policy to compare, measured with `memcommit.bench` and written to `results/`.

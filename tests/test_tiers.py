@@ -1,6 +1,6 @@
 """Tiers, policies, and compaction: bounded working memory whose every move is in the log."""
 
-from mneme import (
+from memcommit import (
     ARCHIVE,
     FIFO,
     LFU,
@@ -175,7 +175,7 @@ def test_forgetting_and_ttl_policies():
 
 
 def test_the_benchmark_replays_a_workload_through_the_real_store():
-    from mneme.bench import Use, Write, compare, replay, synthetic
+    from memcommit.bench import Use, Write, compare, replay, synthetic
 
     events = [Write("a"), Write("b"), Use("a"), Write("c"), Use("a"), Use("b")]
     lru = replay(events, LRU(), capacity=2)

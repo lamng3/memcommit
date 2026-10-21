@@ -5,8 +5,8 @@ import random
 
 import pytest
 
-import mneme
-from mneme import (
+import memcommit
+from memcommit import (
     STALE,
     AnnIndex,
     AsyncMemoryStore,
@@ -17,8 +17,8 @@ from mneme import (
     VectorIndex,
     provenance_guard,
 )
-from mneme.__main__ import main
-from mneme.server import MemoryServer, RemoteStore
+from memcommit.__main__ import main
+from memcommit.server import MemoryServer, RemoteStore
 
 
 @pytest.fixture
@@ -125,7 +125,7 @@ def test_the_blackboard_runs_upstream_agents_first():
 
 def test_the_command_line(tmp_path, capsys):
     path = tmp_path / "memory.db"
-    store = mneme.open(path)
+    store = memcommit.open(path)
     fact = store.put("a", "fact", "f", tier="archive")
     store.invalidate([fact.id], "old")
     assert main(["verify", str(path)]) == 0 and capsys.readouterr().out.strip() == "ok"

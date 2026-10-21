@@ -1,6 +1,6 @@
 """An async face on the store, for agent frameworks that run in an event loop.
 
-    store = AsyncMemoryStore(mneme.open("memory.db"))
+    store = AsyncMemoryStore(memcommit.open("memory.db"))
     async with store.transaction("planner") as tx:
         tx.put("plan", "trip", {"steps": ["book"]})
     facts = await store.find(kind="fact")

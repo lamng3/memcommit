@@ -2,7 +2,7 @@
 
 import pytest
 
-from mneme import (
+from memcommit import (
     LIVE,
     RETRACTED,
     STALE,

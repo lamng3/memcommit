@@ -51,7 +51,7 @@ Guard = Callable[[Commit, State], Iterable[str]]
 # observer(commit, state) -> None; called after the commit is durable.
 Observer = Callable[[Commit, State], None]
 
-SYSTEM = "mneme"
+SYSTEM = "memcommit"
 
 
 class Rejected(RuntimeError):

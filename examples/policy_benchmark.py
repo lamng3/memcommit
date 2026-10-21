@@ -17,8 +17,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))  # run from a clone without installing
 
-from mneme import ARC, FIFO, LFU, LRU, AccessCount, Forgetting, ImportanceAtLeast, Learned, Scored, TwoQueue
-from mneme.bench import compare, synthetic
+from memcommit import ARC, FIFO, LFU, LRU, AccessCount, Forgetting, ImportanceAtLeast, Learned, Scored, TwoQueue  # noqa: E402
+from memcommit.bench import compare, synthetic  # noqa: E402
 
 POLICIES = {
     "FIFO": lambda: (FIFO(), None),

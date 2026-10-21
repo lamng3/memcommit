@@ -3,13 +3,13 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mneme"
+name = "memcommit"
 version = "0.1.0"
-description = "Mneme: A Transactional Memory Layer for Agents"
+description = "MemCommit: A Transactional Memory Layer for Agents"
 authors = [
   { name = "Lam Nguyen", email = "lamng3.work@gmail.com" },
 ]
-license = "CC-BY-4.0"
+license = "MIT"
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Programming Language :: Python :: 3",
@@ -24,13 +24,13 @@ dependencies = []
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]
-mneme = "mneme.__main__:main"
+memcommit = "memcommit.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [project.urls]
-Repository = "https://github.com/lamng3/mneme"
+Repository = "https://github.com/lamng3/memcommit"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

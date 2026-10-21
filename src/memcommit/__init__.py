@@ -1,8 +1,8 @@
-"""Mneme: a transactional memory layer for agents.
+"""MemCommit: a transactional memory layer for agents.
 
-import mneme
-store = mneme.open("memory.db")                  # or .jsonl, or MemoryStore() in memory
-with mneme.trace(store, "planner", "book a trip") as t:
+import memcommit
+store = memcommit.open("memory.db")                  # or .jsonl, or MemoryStore() in memory
+with memcommit.trace(store, "planner", "book a trip") as t:
     t.thought("dates first")
     t.action("search_flights", {"to": "LYO"})
 """

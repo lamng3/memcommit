@@ -1,6 +1,6 @@
 """The blackboard: agents coordinate through memories, exactly once, and redo work that went stale."""
 
-from mneme import ERROR, RECEIPT, Blackboard, CacheSync, DictCache, JsonlEngine, MemoryStore, query_ref, scope_guard
+from memcommit import ERROR, RECEIPT, Blackboard, CacheSync, DictCache, JsonlEngine, MemoryStore, query_ref, scope_guard
 
 
 class Doubler:

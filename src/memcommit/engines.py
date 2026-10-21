@@ -4,7 +4,7 @@ An engine has two jobs: append one transaction's records atomically, and
 return every record in log order. Two more have defaults an engine may speed
 up: `records_after(lsn)`, the tail a snapshot or a remote reader needs, and
 `rewrite(records)`, which atomically replaces the whole log with a compacted
-one (`mneme.compact`). It knows nothing about statuses, scopes,
+one (`memcommit.compact`). It knows nothing about statuses, scopes,
 or agents; the store rebuilds those by replay.
 
 - `MemoryEngine`: a list, for tests and short runs.

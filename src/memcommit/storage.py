@@ -1,6 +1,6 @@
 """The store as a database: log compaction, retention, snapshots, and seals that keep it honest.
 
-Mneme compacts at two levels, the way a log-structured database does:
+MemCommit compacts at two levels, the way a log-structured database does:
 
 - **Memory compaction** (`compaction.Compactor`, `tiers.TieredMemory`): what
   agents see. Finished traces fold into summaries, cold memories leave the

@@ -1,12 +1,12 @@
 <div align="center">
 
-# 🧠 Mneme
+# 🧠 MemCommit
 
 **A Transactional Memory Layer for Agents**
 
-[![CI](https://github.com/lamng3/mneme/actions/workflows/tests.yml/badge.svg)](https://github.com/lamng3/mneme/actions/workflows/tests.yml)
+[![CI](https://github.com/lamng3/memcommit/actions/workflows/tests.yml/badge.svg)](https://github.com/lamng3/memcommit/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3b82f6)](pyproject.toml)
-[![License: CC BY 4.0](https://img.shields.io/badge/license-CC%20BY%204.0-green.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Design](https://img.shields.io/badge/docs-design-8b5cf6)](docs/design.md)
 
 [⚡ Quick start](#-quick-start) · [✨ What it is](#-what-it-is) · [📊 Results](#-results) · [🔧 Usage](#-usage) · [🧭 Roadmap](#-roadmap) · [📝 Citation](#-citation)
@@ -24,8 +24,8 @@
 ## ⚡ Quick start
 
 ```bash
-git clone https://github.com/lamng3/mneme.git
-cd mneme
+git clone https://github.com/lamng3/memcommit.git
+cd memcommit
 pip install -e ".[dev]"
 python examples/shared_memory.py
 ```
@@ -54,14 +54,14 @@ or newer; no runtime dependencies.
 ## ✨ What it is
 
 Agents produce traces: thoughts, tool calls, observations, messages, results.
-Several agents working together read each other's traces as premises. Mneme
+Several agents working together read each other's traces as premises. MemCommit
 stores all of it as JSON memories in one log, and treats agent memory as a
 database problem: a log-structured store, a cache in front of it, and
 compaction at two levels.
 
 <div align="center">
 
-| Database idea | In Mneme |
+| Database idea | In MemCommit |
 |:--|:--|
 | Write-ahead log, replay, compensation | Every change is a record; state is a fold over the log; rollback writes compensating records |
 | Buffer pool / cache | Short-term memory: bounded per agent, `touch` is a hit or a miss, misses page back in |
@@ -135,15 +135,15 @@ from real agents (`AccessLog(record=True)`, then `bench.from_access_log`).
 ## 🔧 Usage
 
 ```python
-import mneme
-from mneme import LRU, AccessCount, Compactor, Recall, TieredMemory
+import memcommit
+from memcommit import LRU, AccessCount, Compactor, Recall, TieredMemory
 
-store = mneme.open("memory.db")                    # SQLite; .jsonl works too
+store = memcommit.open("memory.db")                    # SQLite; .jsonl works too
 tiers = TieredMemory(store, capacity=64, eviction=LRU(), promotion=AccessCount(3),
                      compactor=Compactor(store))
 recall = Recall(store, tiers=tiers)
 
-with mneme.trace(store, "researcher", "how fast is light?") as t:
+with memcommit.trace(store, "researcher", "how fast is light?") as t:
     t.thought("look it up")
     call = t.action("lookup", {"topic": "speed of light"})
     seen = t.observation("299,792 km/s", parent=call)
@@ -181,9 +181,9 @@ was wrong. Both keep the memory in the log.
 <summary><b>Traces</b></summary>
 
 ```python
-from mneme import Trace
+from memcommit import Trace
 
-with mneme.trace(store, "planner", "book a trip", inputs={"city": "Lyon"}) as t:
+with memcommit.trace(store, "planner", "book a trip", inputs={"city": "Lyon"}) as t:
     call = t.action("search_flights", {"to": "LYO"})
     t.observation({"flights": 3}, parent=call)
     helper = t.handoff("booker", "book the cheapest flight")   # another agent's sub-trace
@@ -203,7 +203,7 @@ with status `error`. Step kinds are open; `thought`, `action`, `observation`,
 <summary><b>Tiers, policies, and compaction</b></summary>
 
 ```python
-from mneme import ARC, Learned, TTL, Forgetting, Scored, AnyOf, ImportanceAtLeast, KindIn, KeepFailed
+from memcommit import ARC, Learned, TTL, Forgetting, Scored, AnyOf, ImportanceAtLeast, KindIn, KeepFailed
 
 tiers = TieredMemory(
     store,
@@ -230,7 +230,7 @@ testable alone. A summarizer is any function from a `Trace` to JSON.
 <summary><b>Agents on a blackboard</b></summary>
 
 ```python
-from mneme import Blackboard
+from memcommit import Blackboard
 
 class Writer:
     name = "writer"
@@ -269,13 +269,13 @@ agent writes nothing but an `error` memory in its own scope.
 <summary><b>The database: log compaction, retention, snapshots, seals</b></summary>
 
 ```python
-from mneme.storage import ArchivedOlderThan, AutoSeal, check_seal, compact
+from memcommit.storage import ArchivedOlderThan, AutoSeal, check_seal, compact
 
 report = compact(store, retention=ArchivedOlderThan(seconds=30 * 86400))
 print(report.before, "->", report.after, "records; purged", len(report.purged))
 
 store.save_snapshot("state.json")
-store = mneme.open("memory.db", snapshot="state.json")   # replays only the records after the snapshot
+store = memcommit.open("memory.db", snapshot="state.json")   # replays only the records after the snapshot
 AutoSeal(store, every=1000)                               # a hash-chain seal every 1000 records
 assert check_seal(store)
 ```
@@ -292,17 +292,17 @@ atomically. A `compaction` manifest records what was folded and purged, so
 <summary><b>Many processes, an event loop, many vectors</b></summary>
 
 ```bash
-python -m mneme serve memory.db --port 7340      # one process owns the log
-python -m mneme verify memory.db                 # also: compact, stats
+python -m memcommit serve memory.db --port 7340      # one process owns the log
+python -m memcommit verify memory.db                 # also: compact, stats
 ```
 
 ```python
-from mneme.server import RemoteStore
+from memcommit.server import RemoteStore
 store = RemoteStore("http://127.0.0.1:7340")      # a MemoryStore: traces, tiers, recall all work
 store.refresh()                                   # pull commits from other processes
 
-from mneme import AsyncMemoryStore, AnnIndex
-astore = AsyncMemoryStore(mneme.open("memory.db"))           # await astore.put(...)
+from memcommit import AsyncMemoryStore, AnnIndex
+astore = AsyncMemoryStore(memcommit.open("memory.db"))           # await astore.put(...)
 recall = Recall(store, index=AnnIndex(embed, dimensions=768))  # LSH for large vector recall
 ```
 
@@ -330,7 +330,7 @@ each record and each memory as triples, with `derivedFrom` edges. Provenance
 questions then become SPARQL. Which memories were built on this one?
 
 ```sparql
-SELECT ?m WHERE { ?m <urn:mneme:derivedFrom> <urn:mneme:m:4e33527c048490ae> . }
+SELECT ?m WHERE { ?m <urn:memcommit:derivedFrom> <urn:memcommit:m:4e33527c048490ae> . }
 ```
 
 OntoDB is one such store; its engine lives with the workflow that uses it.
@@ -345,14 +345,14 @@ See [`PLAN.md`](PLAN.md) for what runs now and what is next, and
 ## 📝 Citation
 
 ```bibtex
-@misc{nguyen2026mneme,
-  title  = {Mneme: A Transactional Memory Layer for Agents},
+@misc{nguyen2026memcommit,
+  title  = {MemCommit: A Transactional Memory Layer for Agents},
   author = {Nguyen, Lam},
   year   = {2026},
-  url    = {https://github.com/lamng3/mneme}
+  url    = {https://github.com/lamng3/memcommit}
 }
 ```
 
 ## License
 
-[CC BY 4.0](LICENSE). Copyright (c) 2026 Lam Nguyen.
+[MIT](LICENSE). Copyright (c) 2026 Lam Nguyen.

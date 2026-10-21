@@ -1,9 +1,9 @@
-"""The mneme command: serve a store, or check one.
+"""The memcommit command: serve a store, or check one.
 
-python -m mneme serve memory.db [--host 127.0.0.1] [--port 7340] [--snapshot state.json]
-python -m mneme verify memory.db
-python -m mneme compact memory.db [--retain-archive-seconds N]
-python -m mneme stats memory.db
+python -m memcommit serve memory.db [--host 127.0.0.1] [--port 7340] [--snapshot state.json]
+python -m memcommit verify memory.db
+python -m memcommit compact memory.db [--retain-archive-seconds N]
+python -m memcommit stats memory.db
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from .storage import ArchivedOlderThan, compact
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="mneme", description="A transactional memory layer for agents.")
+    parser = argparse.ArgumentParser(prog="memcommit", description="A transactional memory layer for agents.")
     sub = parser.add_subparsers(dest="command", required=True)
     serve = sub.add_parser("serve", help="serve a store to agents in other processes")
     serve.add_argument("path")
@@ -38,7 +38,7 @@ def main(argv: list[str] | None = None) -> int:
         from .server import MemoryServer
 
         server = MemoryServer(open_store(args.path, snapshot=args.snapshot), args.host, args.port)
-        print(f"mneme serving {args.path} at {server.url}", flush=True)
+        print(f"memcommit serving {args.path} at {server.url}", flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:

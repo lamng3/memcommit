@@ -2,8 +2,8 @@
 
 import pytest
 
-from mneme import ARCHIVE, LONG, STALE, JsonlEngine, MemoryStore, SqliteEngine, verify
-from mneme.storage import ArchivedOlderThan, AutoSeal, KindsAfter, check_seal, compact, compactions, fold
+from memcommit import ARCHIVE, LONG, STALE, JsonlEngine, MemoryStore, SqliteEngine, verify
+from memcommit.storage import ArchivedOlderThan, AutoSeal, KindsAfter, check_seal, compact, compactions, fold
 
 
 def busy_store(engine=None, clock=None):

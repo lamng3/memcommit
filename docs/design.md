@@ -1,12 +1,12 @@
 # Design
 
-Why Mneme is built the way it is. `PLAN.md` says what is built and what is next.
+Why MemCommit is built the way it is. `PLAN.md` says what is built and what is next.
 
 ## What it is for
 
 Agents write a lot down: thoughts, tool calls, observations, messages,
 results, plans, decisions. In a multi-agent workflow one agent's output is
-another's premise. Mneme is the place all of that lives: a store of JSON
+another's premise. MemCommit is the place all of that lives: a store of JSON
 memories with a log, provenance, tiers, and the policies that keep working
 memory small. It is a library with no dependencies, meant to be plugged into
 any agent system; it knows nothing about any particular agent, model, or
@@ -14,7 +14,7 @@ domain.
 
 ## How agent systems store memory, and what we took
 
-| System | How it stores memory | What Mneme takes |
+| System | How it stores memory | What MemCommit takes |
 |:--|:--|:--|
 | MemGPT / Letta (Packer et al., 2023) | Main context, recall storage, archival storage; the agent pages between them | Tiers: `short` is the context, `long` and `archive` the stores behind it |
 | Generative Agents (Park et al., 2023) | A memory stream of observations; retrieval by recency, importance, and relevance; reflections summarize | The recall score; `Scored` eviction; summaries as reflections |
@@ -24,7 +24,7 @@ domain.
 | Mem0 (Chhikara et al., 2025) | Extracted facts with add, update, delete, no-op | Status ops on an append-only log instead of updates in place |
 | Zep (Rasmussen et al., 2025) | A temporal knowledge graph; facts have validity intervals | `as_of(lsn)`: any past state, and why a fact stopped holding |
 
-What none of them give together, and Mneme does: transactions, an
+What none of them give together, and MemCommit does: transactions, an
 append-only log with compensation, provenance that invalidates downstream
 work, and every tier decision recorded. Those are what make memory shared by
 several agents safe to rely on and possible to defend.
@@ -141,7 +141,7 @@ runs the work once the commit is done.
 ## Built to be defended
 
 Shared memory is an attack surface: inject a false observation, retract a
-true one, rewire what a memory was derived from, poison a summary. Mneme does
+true one, rewire what a memory was derived from, poison a summary. MemCommit does
 not decide what is malicious, but it makes a defender's work exact:
 content addressing catches altered bodies, `verify` replays the log for what a
 well-behaved store could not have written, `blast_radius` finds everything a
@@ -152,7 +152,7 @@ an observer or a guard.
 
 ## The database underneath
 
-Mneme is a log-structured store, and it borrows a database's answers to a
+MemCommit is a log-structured store, and it borrows a database's answers to a
 database's problems.
 
 **Two levels of compaction.** Memory compaction decides what agents see:

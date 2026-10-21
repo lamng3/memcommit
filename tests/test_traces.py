@@ -2,7 +2,7 @@
 
 import pytest
 
-from mneme import LIVE, STALE, AgentSession, MemoryStore, Trace, trace
+from memcommit import LIVE, STALE, AgentSession, MemoryStore, Trace, trace
 
 
 def test_a_run_is_a_tree_of_steps_built_on_its_root():

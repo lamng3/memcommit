@@ -1,6 +1,6 @@
 """One store, many processes: a small HTTP server that owns the log, and a client store that mirrors it.
 
-    python -m mneme serve memory.db --port 7340        # the process that owns the store
+    python -m memcommit serve memory.db --port 7340        # the process that owns the store
     store = RemoteStore("http://127.0.0.1:7340")       # in each agent's process
 
 The server holds the only `MemoryStore` that writes. It runs every commit, so
@@ -135,7 +135,7 @@ class RemoteEngine(Engine):
             body = json.loads(err.read() or b"{}")
             if err.code == 409:
                 raise Rejected(body.get("problems", [])) from None
-            raise RuntimeError(f"mneme server: {err.code} {body}") from None
+            raise RuntimeError(f"memcommit server: {err.code} {body}") from None
 
     def append(self, records: Sequence[Record]) -> None:
         raise RuntimeError("a remote store commits whole transactions; use RemoteStore")

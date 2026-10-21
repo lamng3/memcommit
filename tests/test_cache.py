@@ -1,6 +1,6 @@
 """Short-term memory as a cache, the mid-term tier, stateful policies, compaction policies, and recorded workloads."""
 
-from mneme import (
+from memcommit import (
     ARC,
     ARCHIVE,
     LONG,
@@ -21,7 +21,7 @@ from mneme import (
     query_ref,
     trace,
 )
-from mneme.bench import Use, Write, from_access_log, replay
+from memcommit.bench import Use, Write, from_access_log, replay
 
 
 def test_touch_is_a_cache_access():

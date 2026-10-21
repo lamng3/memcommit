@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "Mneme: A Transactional Memory Layer for Agents"
+title: "MemCommit: A Transactional Memory Layer for Agents"
 authors:
   - family-names: Nguyen
     given-names: Lam
 year: 2026
-url: "https://github.com/lamng3/mneme"
+url: "https://github.com/lamng3/memcommit"

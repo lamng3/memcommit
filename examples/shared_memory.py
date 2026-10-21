@@ -18,8 +18,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))  # run from a clone without installing
 
-import mneme
-from mneme import (
+import memcommit
+from memcommit import (
     LRU,
     AccessCount,
     Blackboard,
@@ -86,9 +86,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--store", type=Path, help="a .db or .jsonl file; default: a temporary one")
     args = parser.parse_args()
-    path = args.store or Path(tempfile.mkdtemp(prefix="mneme-")) / "memory.db"
+    path = args.store or Path(tempfile.mkdtemp(prefix="memcommit-")) / "memory.db"
 
-    store = mneme.open(path, guards=[scope_guard, provenance_guard()])
+    store = memcommit.open(path, guards=[scope_guard, provenance_guard()])
     tiers = TieredMemory(store, capacity=12, eviction=LRU(), promotion=AccessCount(3), compactor=Compactor(store))
     recall = Recall(store, tiers=tiers)
     board = Blackboard(store, [Researcher(), Writer()])
