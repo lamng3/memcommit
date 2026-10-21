@@ -7,6 +7,8 @@
 [![CI](https://github.com/lamng3/memcommit/actions/workflows/tests.yml/badge.svg)](https://github.com/lamng3/memcommit/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3b82f6)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Paper](https://img.shields.io/badge/paper-PDF-b31b1b)](paper/memcommit.pdf)
+[![Manual](https://img.shields.io/badge/docs-manual-8b5cf6)](https://lamng3.github.io/memcommit-docs/)
 [![Design](https://img.shields.io/badge/docs-design-8b5cf6)](docs/design.md)
 
 [⚡ Quick start](#-quick-start) · [✨ What it is](#-what-it-is) · [📊 Results](#-results) · [🔧 Usage](#-usage) · [🧭 Roadmap](#-roadmap) · [📝 Citation](#-citation)

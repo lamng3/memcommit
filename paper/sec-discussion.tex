@@ -1,0 +1,40 @@
+\section{Discussion and Limitations}
+\label{sec:discussion}
+
+\stitle{What the results do and do not show.}
+Memory is cheap where the full history is not, and the two tiers answer different
+questions: the record holds detail and facts said once, the notes hold what is
+current. The case for the notes, however, rests on extraction, and our rule-based
+extractor finds only about half the facts in the benchmark. A language model behind
+the same signature is the largest open gain, and the benchmark's oracle rows show
+what it could deliver. We have not built or measured one.
+
+\stitle{Retrieval.}
+The index matches words, not meaning. Stemming and stopword removal fixed the most
+visible failures, but a paraphrase that shares no words with the query is not found.
+\sys accepts any embedding function, and testing it on a workload designed to defeat
+lexical search is future work.
+
+\stitle{Scale and realism.}
+Both benchmarks are synthetic, at small scale, and run in seconds. We have not
+evaluated on recorded conversations or with a model as the reader, and we make no
+claim about accuracy on public long-conversation benchmarks. The harness takes a
+workload and a retrieval function, so both are straightforward to add.
+
+\stitle{Design costs.}
+A single log with a single writer per store keeps commits ordered and guards
+meaningful, at the price of a server when agents run in many processes. Cascading
+invalidation is the right default, but a frequently updated, heavily cited note
+stales a lot; a flag turns it off for minor edits. Conflicts resolve by supersession,
+not by judgement: the newest statement wins until someone retracts the session it came
+from.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+Agent memory is a database problem, and a log with provenance gives it transactions,
+invalidation, and rollback without special cases. On that base, two tiers of memory, an
+index, tools, a declared structure, and an offline consolidation pass fit together
+because each is a transaction with a record of where it came from. Measured honestly
+on a synthetic benchmark, the record alone is a strong baseline, and the notes are as
+good as the extractor behind them.

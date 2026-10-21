@@ -1,0 +1,55 @@
+\documentclass[sigconf, nonacm]{acmart}
+\input{commands}
+
+\settopmatter{printacmref=false, printccs=false, printfolios=true}
+
+\begin{document}
+
+\title{MemCommit: A Transactional Memory Layer for Agents}
+
+\author{Lam Nguyen}
+\affiliation{%
+  \institution{Case Western Reserve University}
+  \city{Cleveland}
+  \state{Ohio}
+  \country{USA}}
+\email{ltn18@case.edu}
+
+\renewcommand{\shortauthors}{Nguyen}
+
+\begin{abstract}
+Agents that remember need two things at once: the full record of what
+happened, so detail is never lost, and short notes of what matters, so they can
+read what they know in a few lines. Most agent-memory systems keep one or the
+other in a store that has no notion of a transaction, no record of where a
+memory came from, and no way to take a bad one back. We present \sys, a memory
+layer that treats agent memory as a database problem. Memories are immutable
+and content-addressed; status and tier are a fold over an append-only log;
+every memory records what it was derived from, so when a premise goes bad
+everything built on it goes stale in one transaction. On this base we build
+episodic sessions, derived notes at paths with a generated index and five agent
+tools, an offline consolidation pass that extracts what agents did not think to
+save and can be previewed and undone, and a declared memory structure that a
+commit guard enforces. On a synthetic multi-session benchmark, search over the
+record answers 96\% of questions from 20 words of context where the full history
+needs up to 1,358; the notes reach 100\% with a perfect extractor and about 49\%
+with our rule-based one, so extraction quality, not the pipeline, is the limit.
+We report where the benchmark favours us and where it does not.
+\end{abstract}
+
+\keywords{agent memory, LLM agents, provenance, transactions, log-structured storage, memory consolidation}
+
+\maketitle
+
+\input{sec-intro}
+\input{sec-related}
+\input{sec-model}
+\input{sec-tiers}
+\input{sec-eval}
+\input{sec-discussion}
+
+\balance
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

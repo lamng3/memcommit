@@ -1,0 +1,49 @@
+\section{The Memory Model}
+\label{sec:model}
+
+\stitle{Memories are values.}
+A memory has a kind, a key, a body (any JSON value), the agent that wrote it, a
+scope that says who may read it, an importance, and \code{derived\_from}. Its id
+is a hash of all of that. Writing the same memory twice names the same memory,
+and work that is redone and comes out the same restores what was there. A body
+cannot change without its id changing, so tampering shows on load.
+
+\stitle{State is a fold over a log.}
+A record puts, restores, retracts, or marks stale one memory, or moves it between
+tiers, inside a transaction. Status (\code{live}, \code{stale}, \code{retracted})
+says whether a memory holds; tier (\code{short}, \code{mid}, \code{long},
+\code{archive}) says where it sits. Neither is stored on the memory. Replaying the
+log in order gives both, and \code{as\_of(lsn)} is a replay that stops early. A
+transaction either commits all its records or none, and passes through guards
+before the commit and observers after it. Rollback to an LSN writes the records
+that return every memory to its status and tier there; the log still shows what
+happened and what undid it.
+
+\stitle{Provenance drives invalidation.}
+\code{derived\_from} holds memory ids and outside references such as a document
+version. Invalidating a reference marks stale every live memory reachable
+through the reference index, in one transaction. A reference can also name a
+\emph{read}: a memory built on ``no notes about this topic'' derives from the
+query that returned nothing, and when a matching memory later goes live the work
+built on the empty read goes stale. A retraction stales everything built on the
+retracted memory, directly or through a read that included it.
+
+\stitle{A declared structure.}
+The core names no domain. A project declares its kinds as a schema: a JSON-schema
+subset for each body, the scopes a kind may be written in, the kinds it must be
+derived from, and a default tier. A commit guard rejects a write that is out of
+line with its kind, for every writer in every process, and the schema is itself a
+memory in the log, so \code{as\_of(lsn)} shows which structure held then. A kind
+that \emph{requires} a premise (an answer derived from a question) declares
+provenance together with structure.
+
+\stitle{The cache and the database underneath.}
+Short-term memory is a bounded cache in front of the log. A use counts as a hit,
+a warm hit, or a miss; a missed live memory is paged back in; eviction policies
+(FIFO, LRU, LFU, 2Q, ARC, a forgetting curve, a scored and a learned policy) are
+pluggable. Compaction works at two levels: memory compaction folds finished
+traces into long-term summaries and moves steps to the archive, and log
+compaction folds each memory's history to the records that replay to the same
+state, as an LSM tree rewrites sorted runs. Snapshots, hash-chain seals, a
+retention policy, and a server that owns the log for agents in many processes
+complete it.

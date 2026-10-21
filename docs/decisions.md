@@ -13,7 +13,7 @@ design as it stands; this file explains how it got there.
 
 ## 2026-10-21: MIT license for the code
 
-- **Choice.** MIT. The paper, when written, stays CC BY.
+- **Choice.** MIT. The paper keeps its own text license.
 - **Alternatives.** CC BY 4.0 (what the repo had), Apache-2.0.
 - **Why.** Creative Commons advises against its licenses for software: CC BY says nothing about patents or about source distribution. MIT is the shortest license people recognize, and the library has no dependencies to reconcile with.
 - **Cost.** None the project cares about; Apache-2.0's patent grant is the one thing given up.
@@ -125,8 +125,8 @@ design as it stands; this file explains how it got there.
 
 ## 2026-10-21: Report the result that is unflattering
 
-- **Choice.** The results state that dreaming alone beats dreaming plus online tools, and that episodic search alone fails on facts that change.
-- **Why.** The first is a real effect of crowding and duplicate notes; the second is why the tiers are both needed. Hiding either would make the benchmark a demonstration instead of a measurement, and both point at work to do (deduplication across paths, stemming or embeddings).
+- **Choice.** The results page states what the benchmark shows against the library: episodic search alone fails on facts that change, tools alone remember only what they are asked to, and, with the built-in extractor, the notes add little over search.
+- **Why.** The first is why both tiers are needed; the last is the true state and points at the extractor. Hiding any of them would make the benchmark a demonstration instead of a measurement. (An earlier run also showed dreaming alone beating dreaming plus tool notes, from duplicates crowding the top results. After the stemming and paraphrase changes below the two are equal, so the results no longer claim it.)
 - **Cost.** None the project minds.
 
 ## 2026-10-21: Stem and drop stopwords in the lexical index

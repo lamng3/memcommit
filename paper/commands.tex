@@ -1,0 +1,38 @@
+% Packages and macros.
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\definecolor{oursblue}{HTML}{2A78D6}
+\definecolor{oursorange}{HTML}{EB6834}
+\definecolor{oursaqua}{HTML}{1BAF7A}
+\definecolor{mutedink}{HTML}{52514E}
+\definecolor{oursbg}{HTML}{E6EFFA}
+\usepackage{xspace}
+\usepackage{balance}
+\usepackage[ruled,linesnumbered,noend]{algorithm2e}
+\usepackage{graphicx}
+
+% Long code identifiers must not overflow the narrow columns.
+\setlength{\emergencystretch}{2em}
+
+% Tight layout: no stretched columns, small caption gaps, compact lists and floats.
+\raggedbottom
+\usepackage[skip=0.5ex]{caption}
+\setlength{\abovecaptionskip}{3pt}
+\setlength{\belowcaptionskip}{3pt}
+\usepackage{enumitem}
+\setlist{nosep, leftmargin=*}
+\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+\setlength{\floatsep}{6pt plus 2pt minus 2pt}
+\setlength{\intextsep}{6pt plus 2pt minus 2pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 2pt}
+\newcommand{\sys}{MemCommit\xspace}
+\newcommand{\kw}[1]{{\ensuremath{\mathsf{#1}}}\xspace}
+\newcommand{\stitle}[1]{\vspace{1.0ex}\noindent{\bf #1}}
+\newcommand{\ie}{\emph{i.e.,}\xspace}
+\newcommand{\eg}{\emph{e.g.,}\xspace}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,calc}

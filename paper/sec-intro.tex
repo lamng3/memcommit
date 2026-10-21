@@ -1,0 +1,43 @@
+\section{Introduction}
+\label{sec:intro}
+
+An agent that talks to a user for months, or a team of agents that work from
+each other's output, accumulates far more than fits in a prompt. The usual
+answers are a vector store of past text, a set of notes the agent writes for
+itself, or both. Each leaves the same gaps. When a note was built on something
+that later turns out to be wrong (a tool that was compromised, a user who
+corrected themselves, a document that changed) nothing says which other notes
+and answers leaned on it. When two agents write at once, nothing orders them.
+When a consolidation step rewrites the notes badly, nothing takes it back. These
+are the problems a database solves, and agent memory has mostly not borrowed its
+answers.
+
+\sys treats agent memory as a database problem. A memory is an immutable,
+content-addressed JSON value; everything that changes about it (that it was
+written, went stale, was retracted, or moved to another tier) is a record in an
+append-only log, and the state of the store is a fold over that log. Every
+memory names what it was \emph{derived from}, so invalidation is a graph walk:
+when a premise stops holding, everything built on it goes stale, transitively,
+in one transaction. Rollback is compensation, as in write-ahead logging~\cite{aries},
+so nothing is erased.
+
+On that base \sys keeps two kinds of memory. \emph{Episodic} memory is the full
+record of sessions, turns, and tool calls, appended as they happen. \emph{Derived}
+memory is what was learned from it: short notes at paths, with a generated index
+an agent reads first, five tools it can call to save, update, delete, search, and
+fetch, and an offline \emph{dreaming} pass that extracts what the agent did not
+think to save, supersedes conflicting notes, merges duplicates, and splits
+oversized ones. Because a note records the episodes it came from, a bad episode
+takes its notes with it, and a pass can be previewed and undone. A project
+declares its own memory structure once, as a schema of kinds, and a commit guard
+enforces it for every writer.
+
+\stitle{Contributions.}
+\begin{itemize}
+  \item A memory model that unifies a log, tiers, and provenance: status and tier are a fold over an append-only log, and invalidation and rollback follow from it (Section~\ref{sec:model}).
+  \item Two tiers of memory built on that model, with an index, agent tools, an offline consolidation pass, and a declared structure, all expressed as transactions with provenance (Section~\ref{sec:tiers}).
+  \item A deterministic benchmark that separates retrieval from reading and the extractor from the rest of the pipeline, with its limitations stated (Section~\ref{sec:eval}).
+\end{itemize}
+
+\noindent The library is MIT-licensed, has no runtime dependencies, and comes
+with a manual and a log of the design decisions behind it.

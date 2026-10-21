@@ -1,0 +1,32 @@
+\section{Related Work}
+\label{sec:related}
+
+\stitle{Agent memory.}
+MemGPT pages information between a main context and external stores the agent
+manages~\cite{memgpt}. Generative Agents keep a stream of observations and
+retrieve by recency, importance, and relevance, with reflections that summarize
+it~\cite{generative}; Reflexion stores verbal self-reflections after each
+trial~\cite{reflexion}. MemoryOS organizes short-, mid-, and long-term stores
+with heat-based promotion~\cite{memoryos}. A-MEM links notes to each other and
+updates the links as notes arrive~\cite{amem}. Mem0 extracts facts and applies
+add, update, delete, and no-op operations~\cite{mem0}, and Zep keeps a temporal
+knowledge graph in which facts have validity intervals~\cite{zep}. \sys takes
+their ideas as policies and operations on a different base: the recall score and
+the summaries-as-reflections of Generative Agents, the tiers and promotion of
+MemoryOS, the status operations of Mem0 as records in a log rather than updates
+in place, and the temporal view of Zep as \code{as\_of(lsn)}. What these systems
+do not offer together is transactions, a log with compensating rollback, and
+provenance that invalidates downstream work.
+
+\stitle{Evaluating long-term memory.}
+LoCoMo~\cite{locomo} and LongMemEval~\cite{longmemeval} evaluate chat assistants
+on very long conversations. We do not use them here: our benchmark is small and
+synthetic, built to isolate retrieval and the extractor, and is not a substitute.
+
+\stitle{Database ideas.}
+Write-ahead logging with compensating rollback~\cite{aries}, log-structured
+merge trees and the compaction they motivate~\cite{lsm}, and buffer replacement
+policies (2Q~\cite{twoq}, ARC~\cite{arc}) are the direct sources of \sys's log,
+its two levels of compaction, and its short-term cache and eviction policies.
+Provenance as the basis for propagating changes follows the database view of
+lineage~\cite{semirings}.

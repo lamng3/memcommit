@@ -1,0 +1,43 @@
+\section{Two Tiers of Memory}
+\label{sec:tiers}
+
+\stitle{Episodic memory.}
+A session is a trace: a root and one memory per step, each committed on its own
+so that a crash keeps what was said. User and agent turns, tool calls, and tool
+results are steps; a wrapper records any function's calls and results. A reply
+is derived from the memories it read, so retracting one of them stales the reply.
+Nothing is distilled away, so detail that a summary dropped can still be fetched.
+
+\stitle{Derived memory.}
+Notes live at paths (\code{user/alice/city}) as memories keyed by path. An update
+writes a new version and marks the old one stale, and by default everything
+derived from it; a delete retracts. The \emph{index} is a Markdown catalog of
+every note's path, title, and first line, grouped by directory and sized to a
+budget, keeping the most important and recent notes when it must cut. It is
+generated on demand and meant to be injected at the start of a session. Five
+tools expose the operations to a model: \code{add\_memory}, \code{update\_memory},
+\code{delete\_memory}, \code{search\_memory}, and \code{fetch\_memory}. Search
+spans both tiers, with relevance from a BM25 index, recency, and importance;
+fetch returns a note in full, or a session as its transcript.
+
+\stitle{Dreaming.}
+Tools only save what an agent thought to save. A dreaming pass reads the sessions
+that ended since the last pass, asks an extractor for the learnings in each, and
+writes them as notes derived from the session and the turns they came from. It
+then maintains the store: a learning whose path holds a different note replaces
+it (the old note goes stale, with what was built on it), near-duplicates in a
+directory are moved to the archive, and oversized notes are split into parts
+derived from the original. The extractor is a function from a session to
+learnings. We provide a rule-based one that needs no model, which finds stated
+facts and preferences and records a successful tool sequence as a playbook; a
+language model is a function with the same signature. A pass is a set of
+transactions with provenance, can be previewed with a dry run, records what it
+covered as a memory in the log so the next pass knows where to start, and can be
+undone by rollback unless another agent has written since.
+
+\stitle{Why transactions matter here.}
+The same machinery serves all of it. A spoofed session, once retracted, stales the
+notes learned from it and the replies built on those notes. A fact that changes
+supersedes the old note and stales the plans built on it. A bad consolidation is
+one rollback away. A declared kind refuses a malformed or orphaned write before it
+lands.
