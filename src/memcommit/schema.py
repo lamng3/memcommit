@@ -39,6 +39,8 @@ from typing import Any
 from .audit import SEAL
 from .blackboard import RECEIPT
 from .compaction import SUMMARY
+from .dream import DREAM
+from .knowledge import KNOWLEDGE
 from .records import SHARED, SHORT, TIERS, Commit, Memory, canonical
 from .session import owns
 from .state import State
@@ -47,7 +49,7 @@ from .store import SYSTEM, MemoryStore
 from .traces import STEP_KINDS, TRACE
 
 SCHEMA = "schema"
-BUILTIN = frozenset({SCHEMA, SUMMARY, RECEIPT, SEAL, COMPACTION, TRACE, *STEP_KINDS})
+BUILTIN = frozenset({SCHEMA, DREAM, KNOWLEDGE, SUMMARY, RECEIPT, SEAL, COMPACTION, TRACE, *STEP_KINDS})
 AGENT = "agent"
 
 _TYPES: dict[str, Any] = {

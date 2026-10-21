@@ -80,3 +80,38 @@ design as it stands; this file explains how it got there.
 - **Alternatives.** Automatic reads and writes only (no agent-facing tools); one search tool per tier.
 - **Why.** Tools let an agent decide when to save and look something up, and cost nothing when unused. One search across tiers, with `fetch` reaching raw episodes, lets an agent recover detail that distillation dropped.
 - **Cost.** The tool schemas use a model-agnostic shape (`name`, `description`, `input_schema`); an adapter is needed for providers that differ.
+
+## 2026-10-21: Dreaming is an offline pass with a pluggable extractor
+
+- **Choice.** `Dreamer.run()` reads sessions that ended since the last pass, asks an `Extractor` (a function from a session to `Learning`s) for what is worth keeping, writes each as a note derived from the session and its source turns, then maintains the store. `heuristic_extractor` needs no model: it finds stated facts, preferences, "remember that" statements, and tool sequences that ended well. A language model is a function with the same signature.
+- **Alternatives.** Only online tools (the agent saves what it thinks to save); an extractor tied to one model API; extraction inside the commit path.
+- **Why.** Online saving misses what is implied, and a long session is expensive to reread at answer time. An offline pass costs nothing at runtime and updates later. A pure function as the extension point keeps the core free of any model dependency and makes the pass testable with exact expectations.
+- **Cost.** The heuristic only finds what its patterns match, and notes are only as fresh as the last pass. `Dreamer.attach(min_sessions)` triggers a pass after enough sessions end.
+
+## 2026-10-21: The log decides where a pass starts
+
+- **Choice.** A pass writes a `dream` memory recording the log position it covered. The next pass starts from the highest `covers_lsn`, counting records of any status.
+- **Alternatives.** A watermark stored outside the log; a flag on each session.
+- **Why.** Everything else about the store is in the log, so the pass history is replayable and auditable with the rest. Counting stale records means a pass whose source session was later retracted is not run again: the notes went stale, and a new pass would not bring back what was invalidated.
+- **Cost.** A pass that is undone is not retried automatically.
+
+## 2026-10-21: Conflicts resolve by supersession, not by judgement
+
+- **Choice.** A learning whose path already holds a different note replaces it. The extractor chooses the path (a slot such as `user/alice/city`), and the last statement in the newest session wins.
+- **Alternatives.** Ask a model to adjudicate; keep both and let retrieval choose; reject the newer statement.
+- **Why.** For facts that change (a city, a preference), the newest statement is almost always right, and the old note goes stale with its dependents, so nothing keeps leaning on it. The history stays in the log, so a wrong choice can be audited and repaired.
+- **Cost.** A mistaken or spoofed later statement overwrites a correct note until someone retracts that session; retracting the session restores the staleness chain but does not bring the old note back by itself.
+
+## 2026-10-21: Maintenance archives, it does not delete
+
+- **Choice.** Near-duplicate notes in a directory (word overlap of at least 0.85) are moved to the archive tier, keeping the most important. A note over `max_chars` is split at paragraph breaks into `-part-N` notes derived from it, and the original goes to the archive.
+- **Alternatives.** Retract duplicates; merge by rewriting; split into subdirectories.
+- **Why.** A duplicate was not wrong, so it should not be retracted (that would stale what was built on it). Archiving removes it from the index and from search by default while keeping it fetchable by id. Sibling `-part-N` paths avoid a path being both a note and a directory.
+- **Cost.** Word overlap misses duplicates with different wording. An embedding-based check is an easy extension through the same hook.
+
+## 2026-10-21: A pass can be previewed and undone
+
+- **Choice.** `run(dry_run=True)` returns the changes without writing. `undo(report)` rolls the log back to before the pass, and refuses if any other agent has written since.
+- **Alternatives.** No preview; undo by retracting each written note.
+- **Why.** Consolidation edits shared knowledge, so a person or a test should be able to see it first. Rollback is compensation, so history is kept. Refusing when someone else wrote avoids undoing their work.
+- **Cost.** A dry run previews session learnings against the current notes, and maintenance against the notes as they are now, not as they would be after the new ones land.

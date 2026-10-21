@@ -24,6 +24,7 @@ from .compaction import (
     UnderPressure,
     outline,
 )
+from .dream import DREAM, Change, Dreamer, DreamReport, Learning, heuristic_extractor
 from .engines import ENGINES, Engine, JsonlEngine, MemoryEngine, SqliteEngine, open_engine
 from .episodes import Episodes, Session
 from .knowledge import KNOWLEDGE, Knowledge
@@ -82,6 +83,7 @@ __all__ = [
     "ARC",
     "ARCHIVE",
     "BUILTIN",
+    "DREAM",
     "ENGINES",
     "ERROR",
     "FIFO",
@@ -114,10 +116,13 @@ __all__ = [
     "CacheStats",
     "CacheSync",
     "Candidate",
+    "Change",
     "Commit",
     "CompactionPolicy",
     "Compactor",
     "DictCache",
+    "DreamReport",
+    "Dreamer",
     "Engine",
     "Episodes",
     "EvictionPolicy",
@@ -131,6 +136,7 @@ __all__ = [
     "KindIn",
     "Knowledge",
     "Learned",
+    "Learning",
     "LexicalIndex",
     "Maintenance",
     "Memory",
@@ -160,6 +166,7 @@ __all__ = [
     "chain_digest",
     "check_body",
     "diff",
+    "heuristic_extractor",
     "lineage",
     "open",
     "open_engine",
