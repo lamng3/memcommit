@@ -45,3 +45,38 @@ design as it stands; this file explains how it got there.
 - **Alternatives.** Only validate bodies; leave provenance rules to `provenance_guard`.
 - **Why.** Provenance is what invalidation runs on. Declaring the expected premises with the structure means a memory cannot be written with its lineage missing.
 - **Cost.** `requires` checks the kind of a premise, not that it is live.
+
+## 2026-10-21: A session is a trace, not a new structure
+
+- **Choice.** `Session` wraps `Trace`: user and agent turns are `message` steps with a `role`, tool calls are `action` plus `observation` (or `error`) steps. `Episodes` finds sessions, and `new_since(lsn)` lists those that ended after a point in the log.
+- **Alternatives.** A separate episodic table or kind with its own log; storing a transcript as one memory per session.
+- **Why.** A trace already commits each step on its own (a crash keeps what was said), has handoffs, compacts into summaries, and archives. Reusing it keeps one episodic format for the compactor, recall, and audit. One memory per session would lose the step-by-step durability.
+- **Cost.** A session's turns are generic `message` memories, so queries for "user turns" filter on `body.role`.
+
+## 2026-10-21: A reply derives from what it read
+
+- **Choice.** `agent_says(text, used=...)` derives the reply from the memory ids the agent read; `Knowledge.take_reads()` collects them.
+- **Alternatives.** Log reads separately and join them later; do not track reads.
+- **Why.** Provenance is the library's lever. A reply built on a note that is later retracted should go stale, and this is the cheapest way to make that true for every reply.
+- **Cost.** The caller passes `used`. Nothing infers which reads mattered.
+
+## 2026-10-21: Derived memory is notes at paths, with a generated index
+
+- **Choice.** `Knowledge` keeps notes as `knowledge` memories keyed by path (`user/alice/city`). `index()` renders a Markdown catalog by directory, sized to a character budget, keeping the most important and most recent notes when it must cut. It is generated on demand, not stored.
+- **Alternatives.** Notes as flat key-value facts; storing an index file as a memory and rewriting it on every change.
+- **Why.** Paths give an agent a hierarchy it can scan and reason about, and a bounded index is what fits in context at the start of a session. A stored index would be one more memory to keep consistent and would stale on every write.
+- **Cost.** The index is recomputed per call, linear in the number of live notes.
+
+## 2026-10-21: Updates supersede; deletes retract
+
+- **Choice.** `update` writes a new version and marks the old one stale, and by default everything derived from the old version. `delete` retracts, which stales dependents through the store's existing rule.
+- **Alternatives.** Edit in place (impossible on an immutable log); update without cascade; delete as stale.
+- **Why.** Stale means "something it was built on no longer holds", which is exactly what happens to work built on an outdated note. Retraction means "it was wrong", which is what `delete_memory` is for. Cascade is on by default because that is the library's promise; `cascade=False` is there for typo fixes.
+- **Cost.** A frequent update to a heavily cited note stales a lot. The consolidation pass is where stale notes get redone.
+
+## 2026-10-21: Five tools over two tiers
+
+- **Choice.** `tools()` returns specs for `add_memory`, `update_memory`, `delete_memory`, `search_memory`, `fetch_memory`; `call` runs them, and with a `session` records each call and result. `search_memory` takes `where` (`derived`, `episodic`, `all`); `fetch_memory` takes a note path or any memory id, and a session root returns its transcript.
+- **Alternatives.** Automatic reads and writes only (no agent-facing tools); one search tool per tier.
+- **Why.** Tools let an agent decide when to save and look something up, and cost nothing when unused. One search across tiers, with `fetch` reaching raw episodes, lets an agent recover detail that distillation dropped.
+- **Cost.** The tool schemas use a model-agnostic shape (`name`, `description`, `input_schema`); an adapter is needed for providers that differ.

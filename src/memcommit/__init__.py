@@ -25,6 +25,8 @@ from .compaction import (
     outline,
 )
 from .engines import ENGINES, Engine, JsonlEngine, MemoryEngine, SqliteEngine, open_engine
+from .episodes import Episodes, Session
+from .knowledge import KNOWLEDGE, Knowledge
 from .policies import (
     ARC,
     FIFO,
@@ -83,6 +85,7 @@ __all__ = [
     "ENGINES",
     "ERROR",
     "FIFO",
+    "KNOWLEDGE",
     "LFU",
     "LIVE",
     "LONG",
@@ -116,6 +119,7 @@ __all__ = [
     "Compactor",
     "DictCache",
     "Engine",
+    "Episodes",
     "EvictionPolicy",
     "FinishedTraces",
     "Forgetting",
@@ -125,6 +129,7 @@ __all__ = [
     "KeepFailed",
     "Kind",
     "KindIn",
+    "Knowledge",
     "Learned",
     "LexicalIndex",
     "Maintenance",
@@ -139,6 +144,7 @@ __all__ = [
     "Rejected",
     "Schema",
     "Scored",
+    "Session",
     "SqliteEngine",
     "State",
     "Step",
