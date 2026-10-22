@@ -161,3 +161,10 @@ design as it stands; this file explains how it got there.
 - **Alternatives.** Leave the manuals on GitHub Pages addresses; a custom domain per manual.
 - **Why.** One domain for the portfolio, and the manuals' relative links work under a prefix.
 - **Cost.** A new manual needs a rule in `_redirects`, and GitHub Pages still answers at the old address, so old links keep working but are not the canonical ones.
+
+## 2026-10-22: Playgrounds run in the browser, and say what they are
+
+- **Choice.** Each manual has a Playground page with no server of ours. Where a project can be stood in for by a web engine, the page runs that engine on the real data (OntoDB and Hermes use Oxigraph, a SPARQL engine in WebAssembly, and say so). Where part of a Python project can be ported, the page runs a JavaScript port and tests it against the Python: MemCommit's log, Aegis's toy ontology and attack searches, KROMA's prompt, Hermes's prompt and extraction, and the Agentic Ontologist's evidence tier. A model is never hosted: the visitor points the page at their own endpoint, or pastes a model's reply.
+- **Alternatives.** Compile each project to WebAssembly (OntoDB needs Emscripten and raptor2; the Python projects need a Python runtime); host a model behind each page; show recordings only.
+- **Why.** A hosted model costs money and needs keys; a recording cannot be tried. A port that is compared with the Python on recorded scenarios is a claim a reader can trust, and the comparison found real mismatches while it was being built: retracting a memory also stales what was built on it, an ontology cycle can return a query's own root, and two candidates with identical similarity can be kept in a different order.
+- **Cost.** A port covers only part of its project and can drift, so each page states what is not ported and the tests must be rerun when the code changes. Calling a model on the visitor's machine from an HTTPS page needs their browser's permission (Chrome asks; Safari refuses), hence the paste option.
