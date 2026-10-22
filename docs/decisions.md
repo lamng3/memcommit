@@ -147,3 +147,10 @@ design as it stands; this file explains how it got there.
 - **Choice.** `memcommit demo` runs a scripted assistant through declaring the structure, sessions with tools, the index at session start, dreaming, a changed fact, a retracted episode, and the benchmark, with no network and no model. `index`, `search`, and `dream` inspect any store from the command line.
 - **Why.** A first run should work in seconds, offline, and show the whole loop. A scripted assistant keeps the output deterministic, so it can be tested and quoted.
 - **Cost.** The assistant is a stand-in. Wiring a real model means writing its tool-calling loop against `Knowledge.tools()`.
+
+## 2026-10-21: Manuals share one design, and each has a demo that replays real output
+
+- **Choice.** The five manuals (MemCommit, OntoDB, KROMA, Aegis, Agentic Ontologist) keep their own repos and sites but share one stylesheet with a per-project accent, modelled on the keras-js site. Each home page has a live demo that replays output the project really produced: a memory log and its stale-cascade, queries and plans from the OntoDB shell, KROMA prompts built by its own code, Aegis attack and defence results, and one recorded routing run. `restyle.py` in `memcommit-docs` applies the design to a sibling manual.
+- **Alternatives.** One combined site for all five; a hosted live model behind each demo; demos that recompute in the browser.
+- **Why.** Each project has its own release cycle and audience, so a combined site would blur them. A demo that replays recorded output cannot drift from the code or need a key, and the page says it computes nothing.
+- **Cost.** A demo is only as fresh as its export: each manual has a `demo_data.py` to rerun when results change. The demos show a replay, not a live system, so a visitor cannot try their own input. KROMA's answers come from another project's recorded run.
