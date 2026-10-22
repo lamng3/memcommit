@@ -154,3 +154,10 @@ design as it stands; this file explains how it got there.
 - **Alternatives.** One combined site for all five; a hosted live model behind each demo; demos that recompute in the browser.
 - **Why.** Each project has its own release cycle and audience, so a combined site would blur them. A demo that replays recorded output cannot drift from the code or need a key, and the page says it computes nothing.
 - **Cost.** A demo is only as fresh as its export: each manual has a `demo_data.py` to rerun when results change. The demos show a replay, not a live system, so a visitor cannot try their own input. KROMA's answers come from another project's recorded run.
+
+## 2026-10-21: Serve the manuals from lamng3.com
+
+- **Choice.** Each manual is proxied by Netlify under lamng3.com (`/memcommit/`, `/ontodb/`, `/kroma/`, `/aegis/`, `/agentic-ontologist/`, with the showcase at `/agentic-ontologist/showcase/`), like keras-js. Links point at lamng3.com, not lamng3.github.io.
+- **Alternatives.** Leave the manuals on GitHub Pages addresses; a custom domain per manual.
+- **Why.** One domain for the portfolio, and the manuals' relative links work under a prefix.
+- **Cost.** A new manual needs a rule in `_redirects`, and GitHub Pages still answers at the old address, so old links keep working but are not the canonical ones.
