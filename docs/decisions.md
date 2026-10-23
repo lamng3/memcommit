@@ -182,3 +182,10 @@ design as it stands; this file explains how it got there.
 - **Alternatives.** Keep the source pane, as the ART stepper does; offer source as a toggle.
 - **Why.** The page is for readers who want to see how memory behaves, not how the library is written; code beside the picture competes with it. The steps are still anchored to library lines, and the tests check those lines exist and that no description names a code identifier.
 - **Cost.** A reader who wants the code has to open the library. The step names are a second vocabulary to keep in line with the code.
+
+## 2026-10-23: The showcase speaks in agent and database terms
+
+- **Choice.** Each step names the database idea it is an instance of (BEGIN, buffered write, write-ahead log append as the commit point, redo, checkpoint, crash recovery, compensation records, log compaction), the boxes carry database names, and the state shows how many memories the agent's recall can still see. A panel says what live, stale, retracted, and the archive mean to an agent.
+- **Alternatives.** Library terms only (put, status, tier); a glossary page in the manual.
+- **Why.** "Stale" was clear as a colour but not as a consequence. For an agent, a bad memory is one it can no longer rely on: stale (outdated) or retracted (wrong), and the library's answer is that recall and search stop returning it while fetching by id still shows it with its state. Database names let a reader who knows databases map the design at a glance.
+- **Cost.** The analogies are approximate where MemCommit differs: the log is the only durable copy, not a journal in front of data pages, and a snapshot is a convenience, not required for recovery.
