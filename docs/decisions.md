@@ -175,3 +175,10 @@ design as it stands; this file explains how it got there.
 - **Alternatives.** More text in `memcommit demo`; a page inside the manual that replays a recording; a visualizer driven by the Python library through a local server.
 - **Why.** The demo's output is correct but the thing it describes (a log, a status per memory, a tier per memory, edges between memories) cannot be seen in text, so it is hard to follow for visual readers. A traced port of the library, with a hook at each line worth showing, makes the state visible without a server. Its tests replay the same scenarios on the Python library (`golden.py` writes the expected records) and compare every memory id, log record, and hash, and check that each Python line shown exists in the library.
 - **Cost.** The port covers the store, rollback, log and trace compaction, and eviction, not guards, observers, query references, or the SQLite and JSONL engines. `golden.json` must be regenerated and the tests rerun when the library changes; the test that checks the displayed lines needs the library checked out next to it.
+
+## 2026-10-23: The showcase shows steps, not code
+
+- **Choice.** The visualizer no longer shows the Python, the locals, or the call stack. Each step has a name ("Find what was built on it", "Commit", "Fold the log") and a one-sentence description, and the memory layers, the log, the tier lanes, and the provenance graph redraw after it. Steps that only made sense next to the source (reading the clock, bumping a counter) are skipped. The Showcase tab opens it from every page of the manual, phones included.
+- **Alternatives.** Keep the source pane, as the ART stepper does; offer source as a toggle.
+- **Why.** The page is for readers who want to see how memory behaves, not how the library is written; code beside the picture competes with it. The steps are still anchored to library lines, and the tests check those lines exist and that no description names a code identifier.
+- **Cost.** A reader who wants the code has to open the library. The step names are a second vocabulary to keep in line with the code.
